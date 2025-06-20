@@ -1,0 +1,41 @@
+{
+  "github_username": "ahmetkaanmuktar",
+  "github_repo": "dugun_resim_video",
+  "base_url": "https://ahmetkaanmuktar.github.io/dugun_resim_video/",
+  "organizer_name": "Ahmet Kaan Muktar",
+  "contact_info": "https://www.instagram.com/ahmetkaanmuktar/",
+  "upload_deadline": "31 Aralık 2024",
+  "default_drive_folder_template": "https://drive.google.com/drive/folders/{folder_id}?usp=drive_link",
+  "qr_api_base": "https://api.qrserver.com/v1/create-qr-code/",
+  "auto_create_folders": true,
+  "backup_enabled": true,
+  "brand_colors": {
+    "primary": "#667eea",
+    "secondary": "#f093fb",
+    "accent": "#4facfe"
+  },
+  "file_limits": {
+    "max_size_mb": 500,
+    "allowed_types": ["jpg", "jpeg", "png", "gif", "mp4", "mov", "avi"],
+    "max_files_per_upload": 50
+  },
+  "notifications": {
+    "email_enabled": false,
+    "email_recipient": "",
+    "webhook_url": "",
+    "google_sheets_id": ""
+  },
+  "seo": {
+    "site_title": "Etkinlik Fotoğraf Sistemi",
+    "site_description": "Düğün ve etkinlikler için fotoğraf/video yükleme sistemi",
+    "keywords": "düğün, fotoğraf, video, yükleme, QR kod",
+    "google_analytics_id": ""
+  },
+  "advanced": {
+    "enable_analytics": true,
+    "enable_pwa": false,
+    "enable_offline": false,
+    "cache_duration_hours": 24,
+    "debug_mode": false
+  }
+} 

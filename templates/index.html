@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📸 Fotoğraf Yükleme - {{EVENT_NAME}}</title>
+    <meta name="description" content="{{EVENT_NAME}} etkinliği için fotoğraf ve video yükleme sayfası">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <i class="fas fa-camera header-icon"></i>
+                <h1 class="header-title">{{EVENT_NAME}}</h1>
+                <p class="header-subtitle">Unutulmaz anlarınızı bizimle paylaşın</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-card">
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h2>Fotoğraf & Video Yükle</h2>
+                    <p>Etkinlikteki güzel anlarınızı paylaşın. Fotoğraf ve videolarınız güvenle saklanacak.</p>
+                    
+                    <!-- Upload Button -->
+                    <a href="{{DRIVE_UPLOAD_URL}}" class="upload-btn" target="_blank" rel="noopener">
+                        <i class="fas fa-upload"></i>
+                        Dosya Yükle
+                    </a>
+                    
+                    <!-- Instructions -->
+                    <div class="instructions">
+                        <h3><i class="fas fa-info-circle"></i> Nasıl Yüklenir?</h3>
+                        <ol>
+                            <li>
+                                <i class="fas fa-click"></i>
+                                <strong>"Dosya Yükle"</strong> butonuna tıklayın
+                            </li>
+                            <li>
+                                <i class="fas fa-folder-open"></i>
+                                Açılan sayfada <strong>"Yeni"</strong> butonuna basın
+                            </li>
+                            <li>
+                                <i class="fas fa-file-upload"></i>
+                                <strong>"Dosya yükle"</strong> seçeneğini seçin
+                            </li>
+                            <li>
+                                <i class="fas fa-images"></i>
+                                Fotoğraf/videolarınızı seçip yükleyin
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+
+            <!-- QR Code Section -->
+            <section class="qr-section">
+                <div class="qr-card">
+                    <h3><i class="fas fa-qrcode"></i> QR Kodu Paylaş</h3>
+                    <p>Bu sayfayı başkalarıyla paylaşmak için QR kodu:</p>
+                    <div class="qr-container">
+                        <img src="{{QR_CODE_URL}}" alt="QR Kod" class="qr-code">
+                        <div class="qr-actions">
+                            <button onclick="downloadQR()" class="qr-btn">
+                                <i class="fas fa-download"></i> İndir
+                            </button>
+                            <button onclick="shareQR()" class="qr-btn">
+                                <i class="fas fa-share"></i> Paylaş
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- File Guidelines -->
+            <section class="guidelines-section">
+                <div class="guidelines-card">
+                    <h3><i class="fas fa-shield-alt"></i> Dosya Kuralları</h3>
+                    <div class="guidelines-grid">
+                        <div class="guideline-item">
+                            <i class="fas fa-file-image"></i>
+                            <strong>Desteklenen Formatlar</strong>
+                            <span>JPG, PNG, GIF, MP4, MOV, AVI</span>
+                        </div>
+                        <div class="guideline-item">
+                            <i class="fas fa-weight-hanging"></i>
+                            <strong>Maksimum Boyut</strong>
+                            <span>500 MB (dosya başına)</span>
+                        </div>
+                        <div class="guideline-item">
+                            <i class="fas fa-users"></i>
+                            <strong>Gizlilik</strong>
+                            <span>Sadece yükleme izni, görüntüleme yok</span>
+                        </div>
+                        <div class="guideline-item">
+                            <i class="fas fa-clock"></i>
+                            <strong>Süre</strong>
+                            <span>{{UPLOAD_DEADLINE}} tarihine kadar</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>❤️ Bu sayfa <strong>{{ORGANIZER_NAME}}</strong> tarafından oluşturulmuştur</p>
+            <p class="footer-note">📱 Instagram: {{CONTACT_INFO}} | Sorun yaşarsanız iletişime geçin</p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Yönlendiriliyor...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
