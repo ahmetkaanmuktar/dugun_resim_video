@@ -1,157 +1,365 @@
-// Etkinlik Fotoğraf Sistemi JavaScript Fonksiyonları
+// Düğün Fotoğraf Yükleme Sistemi - Modern API Integration
+const API_BASE_URL = 'https://dugun-yunus-hilal-backend.onrender.com';
 
 // DOM yüklendiğinde çalışacak fonksiyonlar
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
-    addEventListeners();
-    checkMobileDevice();
+    setupUploadForm();
+    loadGallery();
+    setupDragAndDrop();
 });
 
 // Uygulama başlatma
 function initializeApp() {
-    console.log('📸 Etkinlik Fotoğraf Sistemi başlatıldı');
+    console.log('📸 Düğün Fotoğraf Sistemi başlatıldı');
     
-    // Loading overlay'i gizle
-    hideLoading();
-    
-    // Sayfa ziyaretini kaydet
-    trackPageVisit();
-    
-    // QR kod bilgilerini kontrol et
-    validateQRCode();
+    // Backend bağlantısını test et
+    testBackendConnection();
 }
 
-// Event listener'ları ekle
-function addEventListeners() {
-    // Upload butonu tıklama eventi
-    const uploadBtn = document.querySelector('.upload-btn');
-    if (uploadBtn) {
-        uploadBtn.addEventListener('click', handleUploadClick);
-    }
-    
-    // QR butonları
-    const downloadBtn = document.querySelector('[onclick="downloadQR()"]');
-    const shareBtn = document.querySelector('[onclick="shareQR()"]');
-    
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', downloadQR);
-    }
-    
-    if (shareBtn) {
-        shareBtn.addEventListener('click', shareQR);
-    }
-    
-    // Keyboard navigation
-    document.addEventListener('keydown', handleKeyboardNavigation);
-}
-
-// Upload butonu tıklama handler
-function handleUploadClick(event) {
-    event.preventDefault();
-    
-    showLoading('Google Drive\'a yönlendiriliyor...');
-    
-    // Analytics tracking
-    trackEvent('upload_clicked', {
-        event_name: getEventName(),
-        timestamp: new Date().toISOString()
-    });
-    
-    // Kısa bir gecikme sonra yönlendir
-    setTimeout(() => {
-        window.open(event.target.href, '_blank', 'noopener,noreferrer');
-        hideLoading();
-    }, 1000);
-}
-
-// QR kodu indir
-function downloadQR() {
+// Backend bağlantı testi
+async function testBackendConnection() {
     try {
-        const qrImage = document.querySelector('.qr-code');
-        if (!qrImage) {
-            showNotification('QR kod bulunamadı!', 'error');
+        const response = await fetch(`${API_BASE_URL}/`);
+        const data = await response.json();
+        console.log('✅ Backend bağlantısı başarılı:', data);
+    } catch (error) {
+        console.error('❌ Backend bağlantı hatası:', error);
+        showNotification('Sunucu bağlantısında sorun var. Lütfen daha sonra tekrar deneyin.', 'error');
+    }
+}
+
+// Upload form setup
+function setupUploadForm() {
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    
+    if (form && fileInput) {
+        form.addEventListener('submit', handleFileUpload);
+        fileInput.addEventListener('change', handleFileSelect);
+    }
+}
+
+// Dosya seçimi handler
+function handleFileSelect(event) {
+    const files = event.target.files;
+    if (files.length > 0) {
+        const file = files[0];
+        const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
+        
+        if (file.size > 50 * 1024 * 1024) { // 50MB limit
+            showNotification('Dosya boyutu 50MB\'dan küçük olmalıdır!', 'error');
+            fileInput.value = '';
             return;
         }
         
-        // Canvas oluştur ve QR kodu çiz
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        canvas.width = qrImage.naturalWidth || 300;
-        canvas.height = qrImage.naturalHeight || 300;
-        
-        ctx.drawImage(qrImage, 0, 0);
-        
-        // İndir
-        const link = document.createElement('a');
-        link.download = `qr-kod-${getEventName()}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
-        
-        showNotification('QR kod indirildi!', 'success');
-        trackEvent('qr_downloaded');
-        
-    } catch (error) {
-        console.error('QR kod indirme hatası:', error);
-        showNotification('QR kod indirilemedi', 'error');
+        showNotification(`Dosya seçildi: ${file.name} (${fileSize} MB)`, 'success');
     }
 }
 
-// QR kodu paylaş
-async function shareQR() {
+// Dosya yükleme handler
+async function handleFileUpload(event) {
+    event.preventDefault();
+    
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showNotification('Lütfen bir dosya seçin!', 'error');
+        return;
+    }
+    
+    const uploadBtn = document.querySelector('.upload-btn');
+    const originalText = uploadBtn.innerHTML;
+    
     try {
-        const currentUrl = window.location.href;
-        const eventName = getEventName();
+        // Upload butonunu disable et
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
         
-        // Web Share API destekleniyorsa kullan
-        if (navigator.share) {
-            await navigator.share({
-                title: `📸 ${eventName} - Fotoğraf Yükleme`,
-                text: `${eventName} etkinliği için fotoğraflarınızı yükleyin!`,
-                url: currentUrl
-            });
-            
-            showNotification('Paylaşım başarılı!', 'success');
-            trackEvent('qr_shared', { method: 'native' });
-            
+        // FormData oluştur
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // Upload progress göster
+        showUploadProgress(0);
+        
+        // Dosyayı yükle
+        const response = await uploadFileWithProgress(formData);
+        
+        if (response.success) {
+            showNotification('✅ Dosya başarıyla yüklendi!', 'success');
+            fileInput.value = ''; // Input'u temizle
+            loadGallery(); // Galeriyi yenile
         } else {
-            // Fallback: URL'yi kopyala
-            await navigator.clipboard.writeText(currentUrl);
-            showNotification('Sayfa bağlantısı kopyalandı!', 'success');
-            trackEvent('qr_shared', { method: 'clipboard' });
+            throw new Error(response.message || 'Yükleme başarısız');
         }
         
     } catch (error) {
-        console.error('Paylaşım hatası:', error);
-        
-        // Fallback: URL'yi seç
-        const textArea = document.createElement('textarea');
-        textArea.value = window.location.href;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        
-        showNotification('Bağlantı kopyalandı!', 'success');
+        console.error('Upload hatası:', error);
+        showNotification('❌ Dosya yüklenirken hata oluştu: ' + error.message, 'error');
+    } finally {
+        // Upload butonunu restore et
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = originalText;
+        hideUploadProgress();
     }
 }
 
-// Loading overlay göster
-function showLoading(message = 'Yükleniyor...') {
-    const overlay = document.getElementById('loadingOverlay');
-    const text = overlay.querySelector('p');
-    
-    if (text) {
-        text.textContent = message;
-    }
-    
-    overlay.classList.add('show');
+// Progress ile dosya yükleme
+async function uploadFileWithProgress(formData) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // Progress tracking
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                showUploadProgress(percentComplete);
+            }
+        });
+        
+        // Response handling
+        xhr.addEventListener('load', () => {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                resolve(response);
+            } catch (error) {
+                reject(new Error('Sunucu yanıtı işlenemedi'));
+            }
+        });
+        
+        xhr.addEventListener('error', () => {
+            reject(new Error('Ağ hatası oluştu'));
+        });
+        
+        // Request gönder
+        xhr.open('POST', `${API_BASE_URL}/api/upload`);
+        xhr.send(formData);
+    });
 }
 
-// Loading overlay gizle
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    overlay.classList.remove('show');
+// Upload progress göster
+function showUploadProgress(percent) {
+    let progressBar = document.getElementById('uploadProgress');
+    
+    if (!progressBar) {
+        progressBar = document.createElement('div');
+        progressBar.id = 'uploadProgress';
+        progressBar.innerHTML = `
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+                <span class="progress-text">0%</span>
+            </div>
+        `;
+        
+        // Stil ekle
+        progressBar.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            z-index: 10000;
+            min-width: 300px;
+        `;
+        
+        document.body.appendChild(progressBar);
+    }
+    
+    const progressFill = progressBar.querySelector('.progress-fill');
+    const progressText = progressBar.querySelector('.progress-text');
+    
+    progressFill.style.width = `${percent}%`;
+    progressText.textContent = `${Math.round(percent)}%`;
+    
+    progressBar.style.display = 'block';
+}
+
+// Upload progress gizle
+function hideUploadProgress() {
+    const progressBar = document.getElementById('uploadProgress');
+    if (progressBar) {
+        progressBar.style.display = 'none';
+    }
+}
+
+// Galeri yükleme
+async function loadGallery() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/gallery`);
+        const data = await response.json();
+        
+        if (data.success && data.files) {
+            displayGallery(data.files);
+        } else {
+            console.log('Galeri boş veya yüklenemedi');
+            displayEmptyGallery();
+        }
+        
+    } catch (error) {
+        console.error('Galeri yükleme hatası:', error);
+        displayEmptyGallery();
+    }
+}
+
+// Galeri görüntüleme
+function displayGallery(files) {
+    const galleryGrid = document.getElementById('galleryGrid');
+    
+    if (!galleryGrid) return;
+    
+    if (files.length === 0) {
+        displayEmptyGallery();
+        return;
+    }
+    
+    galleryGrid.innerHTML = files.map(file => `
+        <div class="gallery-item" data-file-id="${file.id}">
+            <div class="gallery-image">
+                ${file.type.startsWith('image/') ? 
+                    `<img src="${file.thumbnail || file.url}" alt="${file.name}" loading="lazy">` :
+                    `<div class="video-thumbnail">
+                        <i class="fas fa-play-circle"></i>
+                        <span>${file.name}</span>
+                    </div>`
+                }
+            </div>
+            <div class="gallery-info">
+                <span class="file-name">${file.name}</span>
+                <span class="file-date">${formatDate(file.uploadDate)}</span>
+            </div>
+        </div>
+    `).join('');
+    
+    // Gallery item click events
+    galleryGrid.querySelectorAll('.gallery-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const fileId = item.dataset.fileId;
+            const file = files.find(f => f.id === fileId);
+            if (file) {
+                openFileModal(file);
+            }
+        });
+    });
+}
+
+// Boş galeri göster
+function displayEmptyGallery() {
+    const galleryGrid = document.getElementById('galleryGrid');
+    if (galleryGrid) {
+        galleryGrid.innerHTML = `
+            <div class="empty-gallery">
+                <i class="fas fa-images"></i>
+                <h3>Henüz fotoğraf yüklenmemiş</h3>
+                <p>İlk fotoğrafı yüklemek için yukarıdaki formu kullanın!</p>
+            </div>
+        `;
+    }
+}
+
+// Drag & Drop setup
+function setupDragAndDrop() {
+    const uploadCard = document.querySelector('.upload-card');
+    const fileInput = document.getElementById('fileInput');
+    
+    if (!uploadCard || !fileInput) return;
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadCard.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadCard.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadCard.addEventListener(eventName, unhighlight, false);
+    });
+    
+    uploadCard.addEventListener('drop', handleDrop, false);
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    function highlight(e) {
+        uploadCard.classList.add('drag-over');
+    }
+    
+    function unhighlight(e) {
+        uploadCard.classList.remove('drag-over');
+    }
+    
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect({ target: { files } });
+        }
+    }
+}
+
+// Utility functions
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('tr-TR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function openFileModal(file) {
+    // Modal implementation
+    const modal = document.createElement('div');
+    modal.className = 'file-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <div class="modal-body">
+                ${file.type.startsWith('image/') ? 
+                    `<img src="${file.url}" alt="${file.name}">` :
+                    `<video controls><source src="${file.url}" type="${file.type}"></video>`
+                }
+            </div>
+            <div class="modal-footer">
+                <h3>${file.name}</h3>
+                <p>Yüklenme: ${formatDate(file.uploadDate)}</p>
+                <a href="${file.url}" download="${file.name}" class="download-btn">
+                    <i class="fas fa-download"></i> İndir
+                </a>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close events
+    const closeBtn = modal.querySelector('.modal-close');
+    closeBtn.addEventListener('click', () => modal.remove());
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+    
+    // ESC key
+    document.addEventListener('keydown', function escHandler(e) {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', escHandler);
+        }
+    });
 }
 
 // Bildirim göster
@@ -199,7 +407,7 @@ function showNotification(message, type = 'info') {
         notification.remove();
     });
     
-    // Otomatik kapanma
+    // Auto remove
     setTimeout(() => {
         if (notification.parentNode) {
             notification.remove();
@@ -207,151 +415,27 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// Notification icon helper
 function getNotificationIcon(type) {
     const icons = {
-        success: 'check-circle',
-        error: 'exclamation-circle',
-        warning: 'exclamation-triangle',
-        info: 'info-circle'
+        'success': 'check-circle',
+        'error': 'exclamation-circle',
+        'warning': 'exclamation-triangle',
+        'info': 'info-circle'
     };
     return icons[type] || 'info-circle';
 }
 
-// Notification color helper
 function getNotificationColor(type) {
     const colors = {
-        success: '#10b981',
-        error: '#ef4444',
-        warning: '#f59e0b',
-        info: '#3b82f6'
+        'success': '#10B981',
+        'error': '#EF4444',
+        'warning': '#F59E0B',
+        'info': '#3B82F6'
     };
-    return colors[type] || '#3b82f6';
+    return colors[type] || '#3B82F6';
 }
 
-// Event name helper
-function getEventName() {
-    const title = document.querySelector('.header-title');
-    return title ? title.textContent.trim() : 'Etkinlik';
-}
-
-// Mobile device kontrolü
-function checkMobileDevice() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-        document.body.classList.add('mobile-device');
-        
-        // Mobile'da daha iyi UX için
-        const uploadBtn = document.querySelector('.upload-btn');
-        if (uploadBtn) {
-            uploadBtn.style.fontSize = '1.3rem';
-            uploadBtn.style.padding = '1.2rem 2.5rem';
-        }
-    }
-}
-
-// Keyboard navigation
-function handleKeyboardNavigation(event) {
-    if (event.key === 'Enter' || event.key === ' ') {
-        const focused = document.activeElement;
-        
-        if (focused.classList.contains('upload-btn')) {
-            event.preventDefault();
-            focused.click();
-        }
-        
-        if (focused.classList.contains('qr-btn')) {
-            event.preventDefault();
-            focused.click();
-        }
-    }
-}
-
-// QR kod validasyonu
-function validateQRCode() {
-    const qrImage = document.querySelector('.qr-code');
-    if (qrImage) {
-        qrImage.addEventListener('error', () => {
-            console.warn('QR kod yüklenemedi');
-            qrImage.style.display = 'none';
-            
-            // Placeholder göster
-            const placeholder = document.createElement('div');
-            placeholder.innerHTML = `
-                <div style="width: 200px; height: 200px; background: #f3f4f6; border: 2px dashed #d1d5db; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #6b7280;">
-                    <i class="fas fa-qrcode" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                    <p>QR kod oluşturuluyor...</p>
-                </div>
-            `;
-            qrImage.parentNode.insertBefore(placeholder, qrImage);
-        });
-    }
-}
-
-// Analytics tracking
-function trackEvent(eventName, eventData = {}) {
-    try {
-        // Google Analytics varsa
-        if (typeof gtag !== 'undefined') {
-            gtag('event', eventName, eventData);
-        }
-        
-        // Console'da log
-        console.log(`📊 Event: ${eventName}`, eventData);
-        
-        // Local storage'a kaydet (debugging için)
-        const events = JSON.parse(localStorage.getItem('event_logs') || '[]');
-        events.push({
-            name: eventName,
-            data: eventData,
-            timestamp: new Date().toISOString()
-        });
-        
-        // Son 100 eventi sakla
-        if (events.length > 100) {
-            events.splice(0, events.length - 100);
-        }
-        
-        localStorage.setItem('event_logs', JSON.stringify(events));
-        
-    } catch (error) {
-        console.error('Analytics tracking hatası:', error);
-    }
-}
-
-// Sayfa ziyareti tracking
-function trackPageVisit() {
-    trackEvent('page_view', {
-        event_name: getEventName(),
-        user_agent: navigator.userAgent,
-        referrer: document.referrer,
-        url: window.location.href
-    });
-}
-
-// Error handling
-window.addEventListener('error', function(event) {
-    console.error('JavaScript hatası:', event.error);
-    
-    trackEvent('javascript_error', {
-        message: event.message,
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno
-    });
-});
-
-// Offline detection
-window.addEventListener('online', function() {
-    showNotification('İnternet bağlantısı yeniden kuruldu', 'success');
-});
-
-window.addEventListener('offline', function() {
-    showNotification('İnternet bağlantısı kesildi', 'warning');
-});
-
-// CSS animasyonları için
+// CSS animasyonları
 const style = document.createElement('style');
 style.textContent = `
     @keyframes slideInRight {
@@ -365,31 +449,106 @@ style.textContent = `
         }
     }
     
-    .notification-content {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        width: 100%;
+    .drag-over {
+        border: 2px dashed #3B82F6 !important;
+        background-color: rgba(59, 130, 246, 0.1) !important;
     }
     
-    .notification-close {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.2rem;
-        cursor: pointer;
-        margin-left: auto;
-        padding: 0;
-        width: 24px;
-        height: 24px;
+    .progress-container {
+        text-align: center;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background-color: #E5E7EB;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3B82F6, #10B981);
+        transition: width 0.3s ease;
+    }
+    
+    .progress-text {
+        font-weight: 600;
+        color: #374151;
+    }
+    
+    .empty-gallery {
+        text-align: center;
+        padding: 3rem;
+        color: #6B7280;
+    }
+    
+    .empty-gallery i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .file-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
         display: flex;
         align-items: center;
         justify-content: center;
+        z-index: 10000;
     }
     
-    .mobile-device .upload-btn {
-        transform: scale(1.05);
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: auto;
+        position: relative;
+    }
+    
+    .modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #6B7280;
+        z-index: 1;
+    }
+    
+    .modal-body img,
+    .modal-body video {
+        max-width: 100%;
+        max-height: 70vh;
+        object-fit: contain;
+    }
+    
+    .modal-footer {
+        padding: 1.5rem;
+        border-top: 1px solid #E5E7EB;
+    }
+    
+    .download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #3B82F6;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        margin-top: 1rem;
+    }
+    
+    .download-btn:hover {
+        background: #2563EB;
     }
 `;
-
 document.head.appendChild(style); 
