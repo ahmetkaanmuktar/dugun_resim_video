@@ -27,11 +27,11 @@ async function testBackendConnection() {
         
         // Backend'in storage tipini kontrol et
         if (data.storage === 'local_with_drive_backup') {
-            showNotification('✅ Sistem hazır! Dosyalar önce siteye, sonra Drive\'a yüklenecek.', 'success');
+            showNotification('✅ Sistem hazır! Dosyalar siteye yükleniyor (Drive yönlendirmesi yok).', 'success');
         }
     } catch (error) {
-        console.error('❌ Backend bağlantı hatası:', error);
-        showNotification('Sunucu bağlantısında sorun var. Lütfen daha sonra tekrar deneyin.', 'error');
+        console.error('❌ Backend henüz aktif değil:', error);
+        showNotification('⚠️ Backend henüz aktif değil. Drive yönlendirmesi engellenmiştir.', 'warning');
     }
 }
 
@@ -219,8 +219,17 @@ async function loadGallery() {
             displayEmptyGallery();
         }
     } catch (error) {
-        console.error('Galeri yükleme hatası:', error);
-        displayEmptyGallery();
+        console.error('⚠️ Backend bağlantısı yok - galeri gösterilmiyor:', error);
+        const gallery = document.getElementById('gallery');
+        if (gallery) {
+            gallery.innerHTML = `
+                <div class="empty-gallery">
+                    <i class="fas fa-server" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                    <h3>Backend Bağlantısı Yok</h3>
+                    <p>Sunucu henüz aktif değil. Lütfen admin ile iletişime geçin.</p>
+                </div>
+            `;
+        }
     }
 }
 
@@ -339,7 +348,35 @@ function formatDate(dateString) {
 }
 
 function openFileModal(fileUrl) {
-    window.open(fileUrl, '_blank');
+    // Drive yönlendirmesi yerine lightbox kullan
+    const lightbox = document.createElement('div');
+    lightbox.className = 'lightbox';
+    lightbox.innerHTML = `
+        <div class="lightbox-content">
+            <button class="lightbox-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+            <img src="${fileUrl}" alt="Görüntü" style="max-width: 90%; max-height: 90%; border-radius: 8px;">
+        </div>
+    `;
+    
+    lightbox.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        cursor: pointer;
+    `;
+    
+    lightbox.onclick = (e) => {
+        if (e.target === lightbox) lightbox.remove();
+    };
+    
+    document.body.appendChild(lightbox);
 }
 
 // Bildirim göster
