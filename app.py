@@ -24,11 +24,14 @@ FOLDER_ID = os.getenv('GOOGLE_DRIVE_FOLDER_ID', '1r7aJfC8EFUSB69WjcywTtQ4BnjbXXR
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
 def get_credentials():
-    if SERVICE_ACCOUNT_JSON:
-        service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
-        credentials = service_account.Credentials.from_service_account_info(
-            service_account_info, scopes=SCOPES)
-        return credentials
+    try:
+        if SERVICE_ACCOUNT_JSON:
+            service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
+            credentials = service_account.Credentials.from_service_account_info(
+                service_account_info, scopes=SCOPES)
+            return credentials
+    except Exception as e:
+        print(f"Credentials error: {e}")
     return None
 
 def allowed_file(filename):
@@ -50,7 +53,12 @@ def upload_to_drive(filepath, filename):
 
 @app.route('/')
 def home():
-    return jsonify({'message': 'Düğün Fotoğraf Yükleme API çalışıyor!', 'status': 'online'})
+    return jsonify({
+        'message': 'Düğün Fotoğraf Yükleme API çalışıyor!', 
+        'status': 'online',
+        'folder_id': FOLDER_ID,
+        'has_credentials': SERVICE_ACCOUNT_JSON is not None
+    })
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -67,10 +75,14 @@ def upload_file():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             
-            drive_id = upload_to_drive(filepath, filename)
-            os.remove(filepath)  # Geçici dosyayı sil
-            
-            return jsonify({'success': True, 'drive_id': drive_id, 'filename': filename}), 200
+            try:
+                drive_id = upload_to_drive(filepath, filename)
+                os.remove(filepath)  # Geçici dosyayı sil
+                return jsonify({'success': True, 'drive_id': drive_id, 'filename': filename}), 200
+            except Exception as e:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                return jsonify({'error': f'Google Drive hatası: {str(e)}'}), 500
         else:
             return jsonify({'error': 'Geçersiz dosya formatı. Desteklenen: JPG, PNG, GIF, MP4, MOV, AVI'}), 400
     
