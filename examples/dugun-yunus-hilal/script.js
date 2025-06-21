@@ -2,6 +2,9 @@
 const API_BASE_URL = 'https://dugun-web-app.onrender.com';
 const CACHE_BUSTER = '?v=' + new Date().getTime(); // Cache buster
 
+// Offline mode flag
+let OFFLINE_MODE = false;
+
 // DOM yüklendiğinde çalışacak fonksiyonlar
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
@@ -10,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupDragAndDrop();
     
     // Cache temizleme bildirimi
-    showNotification('🔄 Sayfa yenilendi! Eski versiyon önbelleği temizleniyor...', 'info');
+    showNotification('🔄 Sayfa yenilendi! Sistem kontrol ediliyor...', 'info');
     console.log('🔄 Cache buster aktif: ' + CACHE_BUSTER);
 });
 
@@ -23,20 +26,42 @@ function initializeApp() {
 // Backend bağlantı testi
 async function testBackendConnection() {
     try {
-        const response = await fetch(`${API_BASE_URL}/${CACHE_BUSTER}`);
+        const response = await fetch(`${API_BASE_URL}/${CACHE_BUSTER}`, {
+            method: 'GET',
+            timeout: 10000 // 10 second timeout
+        });
+        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
         const data = await response.json();
         console.log('✅ Backend bağlantısı başarılı:', data);
+        OFFLINE_MODE = false;
         
         // Backend'in storage tipini kontrol et
         if (data.storage === 'local_with_drive_backup') {
-            showNotification('✅ Sistem hazır! Dosyalar siteye yükleniyor (Drive yönlendirmesi yok).', 'success');
+            showNotification('✅ Sistem hazır! Dosyalar backend\'e yüklenir.', 'success');
         }
     } catch (error) {
         console.error('❌ Backend henüz aktif değil:', error);
-        showNotification('⚠️ Backend henüz aktif değil. Drive yönlendirmesi engellenmiştir.', 'warning');
+        OFFLINE_MODE = true;
+        
+        showNotification('⚠️ Backend deploy oluyor. Demo modu aktif. (2-3 dakika bekleyin)', 'warning');
+        
+        // Offline mode için upload butonunu disable et
+        const uploadBtn = document.querySelector('.upload-btn');
+        if (uploadBtn) {
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-clock"></i> Backend Hazırlanıyor...';
+            uploadBtn.style.opacity = '0.6';
+        }
+        
+        // 2 dakika sonra tekrar dene
+        setTimeout(() => {
+            console.log('🔄 Backend tekrar kontrol ediliyor...');
+            testBackendConnection();
+        }, 120000); // 2 dakika
     }
 }
 
@@ -64,13 +89,22 @@ function handleFileSelect(event) {
             return;
         }
         
-        showNotification(`Dosya seçildi: ${file.name} (${fileSize} MB)`, 'success');
+        if (OFFLINE_MODE) {
+            showNotification(`Dosya seçildi: ${file.name} (${fileSize} MB) - Backend hazırlanıyor...`, 'warning');
+        } else {
+            showNotification(`Dosya seçildi: ${file.name} (${fileSize} MB)`, 'success');
+        }
     }
 }
 
 // Dosya yükleme handler
 async function handleFileUpload(event) {
     event.preventDefault();
+    
+    if (OFFLINE_MODE) {
+        showNotification('❌ Backend henüz hazır değil. Lütfen 2-3 dakika bekleyin.', 'error');
+        return;
+    }
     
     const fileInput = document.getElementById('fileInput');
     const file = fileInput.files[0];
@@ -213,6 +247,11 @@ function hideUploadProgress() {
 // Galeri yükleme
 async function loadGallery() {
     try {
+        if (OFFLINE_MODE) {
+            displayOfflineGallery();
+            return;
+        }
+        
         const response = await fetch(`${API_BASE_URL}/api/gallery${CACHE_BUSTER}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -225,18 +264,28 @@ async function loadGallery() {
             displayEmptyGallery();
         }
     } catch (error) {
-        console.error('⚠️ Backend bağlantısı yok - galeri gösterilmiyor:', error);
-        const gallery = document.getElementById('gallery');
-        if (gallery) {
-            gallery.innerHTML = `
-                <div class="empty-gallery">
-                    <i class="fas fa-server" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
-                    <h3>Backend Bağlantısı Yok</h3>
-                    <p>Sunucu henüz aktif değil. Lütfen admin ile iletişime geçin.</p>
-                </div>
-            `;
-        }
+        console.error('⚠️ Backend bağlantısı yok - offline galeri gösteriliyor:', error);
+        displayOfflineGallery();
     }
+}
+
+// Offline galeri göster
+function displayOfflineGallery() {
+    const gallery = document.getElementById('gallery');
+    if (!gallery) return;
+    
+    gallery.innerHTML = `
+        <div class="empty-gallery">
+            <i class="fas fa-clock" style="font-size: 48px; margin-bottom: 15px; color: #f59e0b;"></i>
+            <h3>Backend Hazırlanıyor</h3>
+            <p>Render.com'da backend uyandırılıyor. 2-3 dakika bekleyin...</p>
+            <div style="margin-top: 20px;">
+                <button onclick="testBackendConnection()" class="retry-btn">
+                    <i class="fas fa-sync-alt"></i> Tekrar Dene
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 // Galeri görüntüleme
@@ -424,7 +473,7 @@ function showNotification(message, type = 'info') {
         display: flex;
         align-items: center;
         gap: 10px;
-        max-width: 300px;
+        max-width: 350px;
         animation: slideInRight 0.3s ease-out;
     `;
     
@@ -441,7 +490,7 @@ function showNotification(message, type = 'info') {
         if (notification.parentNode) {
             notification.remove();
         }
-    }, 5000);
+    }, 8000); // 8 saniye göster
 }
 
 function getNotificationIcon(type) {
@@ -517,6 +566,22 @@ style.textContent = `
         font-size: 4rem;
         margin-bottom: 1rem;
         opacity: 0.5;
+    }
+    
+    .retry-btn {
+        background: #3B82F6;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .retry-btn:hover {
+        background: #2563EB;
+        transform: translateY(-2px);
     }
     
     .gallery-item {
