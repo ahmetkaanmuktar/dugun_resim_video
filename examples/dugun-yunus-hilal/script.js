@@ -1,5 +1,6 @@
 // Düğün Fotoğraf Yükleme Sistemi - Basit Backend Entegrasyonu
 const API_BASE_URL = 'https://dugun-web-app.onrender.com';
+const CACHE_BUSTER = '?v=' + new Date().getTime(); // Cache buster
 
 // DOM yüklendiğinde çalışacak fonksiyonlar
 document.addEventListener('DOMContentLoaded', function() {
@@ -7,6 +8,10 @@ document.addEventListener('DOMContentLoaded', function() {
     setupUploadForm();
     loadGallery();
     setupDragAndDrop();
+    
+    // Cache temizleme bildirimi
+    showNotification('🔄 Sayfa yenilendi! Eski versiyon önbelleği temizleniyor...', 'info');
+    console.log('🔄 Cache buster aktif: ' + CACHE_BUSTER);
 });
 
 // Uygulama başlatma
@@ -18,7 +23,7 @@ function initializeApp() {
 // Backend bağlantı testi
 async function testBackendConnection() {
     try {
-        const response = await fetch(`${API_BASE_URL}/`);
+        const response = await fetch(`${API_BASE_URL}/${CACHE_BUSTER}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -86,6 +91,7 @@ async function handleFileUpload(event) {
         // FormData oluştur
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('cache_buster', new Date().getTime()); // Form data'ya da cache buster ekle
         
         // Upload progress göster
         showUploadProgress(0);
@@ -149,7 +155,7 @@ async function uploadFileWithProgress(formData) {
         });
         
         // Request gönder
-        xhr.open('POST', `${API_BASE_URL}/api/upload`);
+        xhr.open('POST', `${API_BASE_URL}/api/upload${CACHE_BUSTER}`);
         xhr.send(formData);
     });
 }
@@ -207,7 +213,7 @@ function hideUploadProgress() {
 // Galeri yükleme
 async function loadGallery() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/gallery`);
+        const response = await fetch(`${API_BASE_URL}/api/gallery${CACHE_BUSTER}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -351,10 +357,16 @@ function openFileModal(fileUrl) {
     // Drive yönlendirmesi yerine lightbox kullan
     const lightbox = document.createElement('div');
     lightbox.className = 'lightbox';
+    
+    // Cache buster ekle
+    const fileUrlWithCacheBuster = fileUrl.includes('?') ? 
+        fileUrl + '&cb=' + new Date().getTime() : 
+        fileUrl + '?cb=' + new Date().getTime();
+    
     lightbox.innerHTML = `
         <div class="lightbox-content">
             <button class="lightbox-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
-            <img src="${fileUrl}" alt="Görüntü" style="max-width: 90%; max-height: 90%; border-radius: 8px;">
+            <img src="${fileUrlWithCacheBuster}" alt="Görüntü" style="max-width: 90%; max-height: 90%; border-radius: 8px;">
         </div>
     `;
     
