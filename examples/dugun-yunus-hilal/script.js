@@ -1,5 +1,5 @@
 // Düğün Fotoğraf Yükleme Sistemi - Basit Backend Entegrasyonu
-const API_BASE_URL = 'https://dugun-yunus-hilal-backend.onrender.com';
+const API_BASE_URL = 'https://dugun-web-app.onrender.com';
 
 // DOM yüklendiğinde çalışacak fonksiyonlar
 document.addEventListener('DOMContentLoaded', function() {
