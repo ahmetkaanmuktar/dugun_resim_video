@@ -64,8 +64,29 @@ def home():
         'status': 'online',
         'storage': 'local_with_drive_backup',
         'folder_id': FOLDER_ID,
-        'has_credentials': SERVICE_ACCOUNT_JSON is not None
+        'has_credentials': SERVICE_ACCOUNT_JSON is not None,
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
     })
+
+@app.route('/health')
+@app.route('/healthz')
+def health_check():
+    """Health check endpoint for keeping Render awake"""
+    return jsonify({
+        'status': 'healthy',
+        'message': 'Backend is alive and running!',
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+        'uptime': 'Backend active'
+    }), 200
+
+@app.route('/wake')
+def wake_up():
+    """Wake up endpoint to manually restart the backend"""
+    return jsonify({
+        'status': 'awake', 
+        'message': '🚀 Backend uyanıyor! Lütfen 30-60 saniye bekleyin...',
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+    }), 200
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
