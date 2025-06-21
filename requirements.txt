@@ -1,37 +1,25 @@
-# Etkinlik Fotoğraf Sistemi - Python Gereksinimleri
+# Düğün Fotoğraf Yükleme Sistemi - Backend Requirements
 
-# QR kod üretimi için gerekli
+# Flask Web Framework
+Flask==2.3.3
+flask-cors==4.0.0
+Werkzeug==2.3.7
+
+# Google Drive API
+google-api-python-client==2.100.0
+google-auth==2.23.0
+google-auth-oauthlib==1.0.0
+google-auth-httplib2==0.1.1
+
+# Dosya işlemleri
+python-dotenv==1.0.0
+
+# Production server
+gunicorn==21.2.0
+
+# QR kod üretimi (opsiyonel)
 qrcode[pil]==7.4.2
 Pillow==10.1.0
 
-# Web istekleri için
+# Web istekleri
 requests==2.31.0
-
-# JSON ve dosya işlemleri (Python built-in)
-# json
-# pathlib
-# argparse
-# urllib.parse
-
-# Opsiyonel: Gelişmiş özellikler
-# google-auth==2.23.4           # Google API entegrasyonu
-# google-auth-oauthlib==1.1.0   # OAuth için
-# google-auth-httplib2==0.1.1   # HTTP istekleri
-# google-api-python-client==2.108.0  # Google Drive API
-
-# Opsiyonel: E-posta bildirimleri
-# smtplib                       # Python built-in
-# email                         # Python built-in
-
-# Opsiyonel: Resim işleme
-# imageio==2.31.5               # Video thumbnail'ları
-# opencv-python==4.8.1.78      # Gelişmiş resim işleme
-
-# Opsiyonel: Web framework (eğer kendi sunucu kurmak isterseniz)
-# flask==3.0.0
-# fastapi==0.104.1
-
-# Geliştirme araçları
-# black==23.11.0                # Kod formatı
-# pylint==3.0.2                 # Kod analizi
-# pytest==7.4.3                # Test framework 
