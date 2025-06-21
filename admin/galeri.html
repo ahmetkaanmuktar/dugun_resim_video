@@ -165,6 +165,43 @@
             color: white;
         }
 
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 10px 16px;
+            border: 2px solid #667eea;
+            background: transparent;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+        }
+
+        .filter-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .gallery-item.hidden {
+            display: none;
+        }
+
         .loading {
             text-align: center;
             padding: 50px;
@@ -308,6 +345,25 @@
             .api-key-form {
                 flex-direction: column;
             }
+
+            .gallery-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .filter-buttons {
+                justify-content: flex-start;
+                width: 100%;
+            }
+
+            .filter-btn {
+                flex: 1;
+                min-width: 0;
+                justify-content: center;
+                font-size: 12px;
+                padding: 8px 12px;
+            }
         }
 
         /* Lightbox styles */
@@ -423,9 +479,22 @@
 
         <!-- Demo Gallery Section -->
         <div class="gallery-section">
-            <h2 style="color: #333; margin-bottom: 20px;">
-                <i class="fas fa-folder-open"></i> Yüklenen Dosyalar
-            </h2>
+            <div class="gallery-header">
+                <h2 class="gallery-title">
+                    <i class="fas fa-folder-open"></i> Yüklenen Dosyalar
+                </h2>
+                <div class="filter-buttons">
+                    <button onclick="filterGallery('all')" class="filter-btn active" id="filterAll">
+                        <i class="fas fa-th"></i> Hepsini Göster
+                    </button>
+                    <button onclick="filterGallery('images')" class="filter-btn" id="filterImages">
+                        <i class="fas fa-image"></i> Sadece Fotoğraflar
+                    </button>
+                    <button onclick="filterGallery('videos')" class="filter-btn" id="filterVideos">
+                        <i class="fas fa-video"></i> Sadece Videolar
+                    </button>
+                </div>
+            </div>
             
             <div class="setup-section">
                 <div class="demo-content">
@@ -583,6 +652,7 @@
         function createGalleryItem(file, isVideo) {
             const item = document.createElement('div');
             item.className = 'gallery-item';
+            item.setAttribute('data-type', isVideo ? 'video' : 'image');
             item.onclick = () => openLightbox(file, isVideo);
 
             const media = isVideo ? 
@@ -650,6 +720,81 @@
             }
         }
 
+        // Filtreleme sistemi
+        function filterGallery(type) {
+            const galleryItems = document.querySelectorAll('.gallery-item');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            
+            // Aktif butonu güncelle
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            document.getElementById('filter' + capitalize(type === 'all' ? 'All' : (type === 'images' ? 'Images' : 'Videos'))).classList.add('active');
+            
+            // Dosya sayılarını say
+            let visibleCount = 0;
+            
+            galleryItems.forEach(item => {
+                const itemType = item.getAttribute('data-type');
+                
+                if (type === 'all') {
+                    item.classList.remove('hidden');
+                    visibleCount++;
+                } else if (type === 'images' && itemType === 'image') {
+                    item.classList.remove('hidden');
+                    visibleCount++;
+                } else if (type === 'videos' && itemType === 'video') {
+                    item.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+            
+            // Sonuçları güncelle
+            updateFilterResults(type, visibleCount);
+        }
+        
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+        
+        function updateFilterResults(type, count) {
+            const galleryGrid = document.getElementById('galleryGrid');
+            
+            // Eğer hiç sonuç yoksa mesaj göster
+            if (count === 0) {
+                let message = '';
+                if (type === 'images') {
+                    message = '<i class="fas fa-image"></i><br>Henüz fotoğraf yüklenmemiş.';
+                } else if (type === 'videos') {
+                    message = '<i class="fas fa-video"></i><br>Henüz video yüklenmemiş.';
+                } else {
+                    message = '<i class="fas fa-folder-open"></i><br>Henüz dosya yüklenmemiş.';
+                }
+                
+                // Eğer zaten mesaj yoksa ekle
+                if (!document.getElementById('filterMessage')) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.id = 'filterMessage';
+                    messageDiv.style.cssText = `
+                        grid-column: 1/-1; 
+                        text-align: center; 
+                        padding: 50px; 
+                        color: #666;
+                        font-size: 18px;
+                        opacity: 0.7;
+                    `;
+                    messageDiv.innerHTML = message;
+                    galleryGrid.appendChild(messageDiv);
+                }
+            } else {
+                // Mesajı kaldır
+                const existingMessage = document.getElementById('filterMessage');
+                if (existingMessage) {
+                    existingMessage.remove();
+                }
+            }
+        }
+
         function logout() {
             if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
                 localStorage.removeItem('adminLoggedIn');
@@ -678,40 +823,55 @@
         function loadDemoGallery() {
             const galleryGrid = document.getElementById('galleryGrid');
             
-            // Demo fotoğrafları
-            const demoImages = [
-                'https://picsum.photos/400/400?random=1',
-                'https://picsum.photos/400/400?random=2',
-                'https://picsum.photos/400/400?random=3',
-                'https://picsum.photos/400/400?random=4',
-                'https://picsum.photos/400/400?random=5',
-                'https://picsum.photos/400/400?random=6',
-                'https://picsum.photos/400/400?random=7',
-                'https://picsum.photos/400/400?random=8'
+            // Demo fotoğrafları ve videoları
+            const demoContent = [
+                { url: 'https://picsum.photos/400/400?random=1', type: 'image', name: 'Demo Fotoğraf 1' },
+                { url: 'https://picsum.photos/400/400?random=2', type: 'image', name: 'Demo Fotoğraf 2' },
+                { url: 'https://picsum.photos/400/400?random=3', type: 'image', name: 'Demo Fotoğraf 3' },
+                { url: 'https://picsum.photos/400/400?random=4', type: 'image', name: 'Demo Fotoğraf 4' },
+                { url: 'https://picsum.photos/400/400?random=5', type: 'image', name: 'Demo Fotoğraf 5' },
+                { url: 'https://picsum.photos/400/400?random=6', type: 'image', name: 'Demo Fotoğraf 6' },
+                { url: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4', type: 'video', name: 'Demo Video 1' },
+                { url: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4', type: 'video', name: 'Demo Video 2' }
             ];
 
             galleryGrid.innerHTML = '';
 
-            demoImages.forEach((imageUrl, index) => {
+            demoContent.forEach((content, index) => {
                 const item = document.createElement('div');
                 item.className = 'gallery-item';
+                item.setAttribute('data-type', content.type);
+                
+                const media = content.type === 'video' ? 
+                    `<video muted style="width: 100%; height: 100%; object-fit: cover;">
+                        <source src="${content.url}" type="video/mp4">
+                    </video>` :
+                    `<img src="${content.url}" alt="${content.name}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">`;
+                
                 item.innerHTML = `
-                    <img src="${imageUrl}" alt="Demo Fotoğraf ${index + 1}" loading="lazy">
-                    <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
-                        Demo ${index + 1}
+                    ${media}
+                    <div class="gallery-item-overlay">
+                        <i class="gallery-item-icon fas ${content.type === 'video' ? 'fa-play-circle' : 'fa-search-plus'}"></i>
+                    </div>
+                    <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                        ${content.name}
                     </div>
                 `;
                 
                 item.onclick = () => {
-                    alert(`Bu bir demo fotoğraftır. Gerçek sistemde burada lightbox açılacak.`);
+                    alert(`Bu bir demo ${content.type === 'video' ? 'video' : 'fotoğraf'}ıdır. Gerçek sistemde burada lightbox açılacak.`);
                 };
 
                 galleryGrid.appendChild(item);
             });
 
             // İstatistikleri güncelle
-            document.querySelector('.stats-grid .stat-item:first-child .stat-number').textContent = demoImages.length;
-            document.querySelector('.stats-grid .stat-item:nth-child(2) .stat-number').textContent = demoImages.length;
+            const images = demoContent.filter(c => c.type === 'image');
+            const videos = demoContent.filter(c => c.type === 'video');
+            
+            document.querySelector('.stats-grid .stat-item:first-child .stat-number').textContent = demoContent.length;
+            document.querySelector('.stats-grid .stat-item:nth-child(2) .stat-number').textContent = images.length;
+            document.querySelector('.stats-grid .stat-item:nth-child(3) .stat-number').textContent = videos.length;
         }
     </script>
 </body>
