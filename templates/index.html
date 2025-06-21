@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Düğün Yunus❤️ve Hilal - Fotoğraf Yükle & Galeri</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <i class="fas fa-camera header-icon"></i>
+                <h1 class="header-title">Düğün Yunus <span class="heart">❤️</span> ve Hilal</h1>
+                <p class="header-subtitle">Unutulmaz anlarınızı bizimle paylaşın</p>
+            </div>
+        </header>
+        <main class="main-content">
+            <section class="upload-section">
+                <div class="upload-card">
+                    <h2><i class="fas fa-cloud-upload-alt"></i> Fotoğraf & Video Yükle</h2>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <input type="file" id="fileInput" name="file" accept="image/*,video/*" required />
+                        <button type="submit" class="upload-btn">
+                            <i class="fas fa-upload"></i> Yükle
+                        </button>
+                    </form>
+                    <div id="uploadStatus"></div>
+                </div>
+            </section>
+            <section class="qr-section">
+                <div class="qr-card">
+                    <h3><i class="fas fa-qrcode"></i> QR Kodu ile Paylaş</h3>
+                    <p>Bu sayfayı başkalarına göndermek için QR kodu okutun:</p>
+                    <div class="qr-container">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://ahmetkaanmuktar.github.io/dugun_resim_video/" alt="QR Kod" class="qr-code">
+                    </div>
+                </div>
+            </section>
+            <section class="gallery-section">
+                <div class="upload-card">
+                    <i class="fas fa-images upload-icon"></i>
+                    <h2>Fotoğraf & Video Galerisi</h2>
+                    <p>Yüklenen tüm fotoğraf ve videolar burada görüntülenir</p>
+                    <div id="gallery" class="gallery"></div>
+                </div>
+            </section>
+        </main>
+        <footer class="footer">
+            <p>❤️ <strong>Ahmet Kaan Muktar</strong> tarafından hazırlanmıştır | <a href="https://www.instagram.com/ahmetkaanmuktar/" target="_blank">@ahmetkaanmuktar</a></p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
