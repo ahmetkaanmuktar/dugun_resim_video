@@ -11,7 +11,7 @@
     <meta name="expires" content="0">
     <meta name="pragma" content="no-cache">
     <title>Düğün Etkinliği - Fotoğraf Yükle & Galeri</title>
-    <link rel="stylesheet" href="style.css?v=3.0.0&t=1736616000">
+    <link rel="stylesheet" href="style.css?v=4.0.0&heroku=true">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
             <div class="header-content">
                 <i class="fas fa-camera header-icon"></i>
                 <h1 class="header-title">Düğün Etkinliği <span class="heart">❤️</span></h1>
-                <p class="header-subtitle">Anılarınızı paylaşın - V3.0.0 - CACHE FIX</p>
+                <p class="header-subtitle">Anılarınızı paylaşın - V4.0.0 - HEROKU BACKEND</p>
             </div>
         </header>
         <main class="main-content">
@@ -61,6 +61,12 @@
             <p>❤️ <strong>Ahmet Kaan Muktar</strong> tarafından hazırlanmıştır | <a href="https://www.instagram.com/ahmetkaanmuktar/" target="_blank">@ahmetkaanmuktar</a></p>
         </footer>
     </div>
-    <script src="script.js?v=3.0.0&t=1736616000"></script>
+    <script>
+        // Force reload JavaScript with timestamp
+        const timestamp = new Date().getTime();
+        const script = document.createElement('script');
+        script.src = 'script.js?v=4.0.0&heroku=true&t=' + timestamp;
+        document.head.appendChild(script);
+    </script>
 </body>
 </html> 
