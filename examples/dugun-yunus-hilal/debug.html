@@ -17,6 +17,7 @@
     
     <button onclick="testBackend()">Backend Durumunu Test Et</button>
     <button onclick="testGallery()">Galeri Test Et</button>
+    <button onclick="testDebug()">🔍 Drive Bağlantısı Test Et</button>
     <button onclick="testUpload()">Upload Test Et (Dosya Seç)</button>
     
     <div id="results"></div>
@@ -54,6 +55,17 @@
                 addResult('📸 Galeri Durumu', data, data.success);
             } catch (error) {
                 addResult('❌ Galeri Hatası', error.message, false);
+            }
+        }
+        
+        async function testDebug() {
+            try {
+                console.log('Drive debug test başlıyor...');
+                const response = await fetch(API_URL + '/api/debug?t=' + Date.now());
+                const data = await response.json();
+                addResult('🔍 Drive Debug Bilgileri', data, data.success);
+            } catch (error) {
+                addResult('❌ Debug Hatası', error.message, false);
             }
         }
         

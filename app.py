@@ -211,6 +211,47 @@ def stats():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/debug', methods=['GET'])
+def debug_info():
+    """Debug bilgileri - Drive bağlantısı test"""
+    try:
+        # Credentials test
+        credentials = get_credentials()
+        has_credentials = credentials is not None
+        
+        # Drive bağlantı testi
+        drive_test_result = None
+        if credentials:
+            try:
+                service = build('drive', 'v3', credentials=credentials)
+                # Klasör erişim testi
+                folder_info = service.files().get(fileId=FOLDER_ID, fields='id,name,permissions').execute()
+                drive_test_result = {
+                    'folder_accessible': True,
+                    'folder_name': folder_info.get('name', 'Unknown'),
+                    'folder_id': folder_info.get('id')
+                }
+            except Exception as e:
+                drive_test_result = {
+                    'folder_accessible': False,
+                    'error': str(e)
+                }
+        
+        return jsonify({
+            'success': True,
+            'debug_info': {
+                'has_service_account_json': SERVICE_ACCOUNT_JSON is not None,
+                'has_credentials': has_credentials,
+                'folder_id': FOLDER_ID,
+                'drive_test': drive_test_result,
+                'uploads_folder_exists': os.path.exists(app.config['UPLOAD_FOLDER']),
+                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e), 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')})
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False) 
