@@ -1,5 +1,5 @@
-// Düğün Fotoğraf Yükleme Sistemi - Basit Backend Entegrasyonu
-const API_BASE_URL = 'https://dugun-web-app.onrender.com';
+// Düğün Fotoğraf Yükleme Sistemi - Heroku Backend
+const API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
 const CACHE_BUSTER = '?v=' + new Date().getTime(); // Cache buster
 
 // Offline mode flag
