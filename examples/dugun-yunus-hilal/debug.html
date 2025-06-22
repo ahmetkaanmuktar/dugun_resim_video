@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Test - Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Backend Test & Debug</h1>
+    
+    <button onclick="testBackend()">Backend Durumunu Test Et</button>
+    <button onclick="testGallery()">Galeri Test Et</button>
+    <button onclick="testUpload()">Upload Test Et (Dosya Seç)</button>
+    
+    <div id="results"></div>
+    
+    <h3>Dosya Seç (Test Upload)</h3>
+    <input type="file" id="testFile" accept="image/*,video/*">
+    
+    <script>
+        const API_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
+        const resultsDiv = document.getElementById('results');
+        
+        function addResult(title, content, isSuccess = true) {
+            const div = document.createElement('div');
+            div.className = 'result ' + (isSuccess ? 'success' : 'error');
+            div.innerHTML = `<h4>${title}</h4><pre>${JSON.stringify(content, null, 2)}</pre>`;
+            resultsDiv.appendChild(div);
+        }
+        
+        async function testBackend() {
+            try {
+                console.log('Backend test başlıyor...');
+                const response = await fetch(API_URL + '/?t=' + Date.now());
+                const data = await response.json();
+                addResult('✅ Backend Durumu', data, true);
+            } catch (error) {
+                addResult('❌ Backend Hatası', error.message, false);
+            }
+        }
+        
+        async function testGallery() {
+            try {
+                console.log('Galeri test başlıyor...');
+                const response = await fetch(API_URL + '/api/gallery?t=' + Date.now());
+                const data = await response.json();
+                addResult('📸 Galeri Durumu', data, data.success);
+            } catch (error) {
+                addResult('❌ Galeri Hatası', error.message, false);
+            }
+        }
+        
+        async function testUpload() {
+            const fileInput = document.getElementById('testFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Lütfen önce bir dosya seçin!');
+                return;
+            }
+            
+            try {
+                console.log('Upload test başlıyor...', file.name);
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(API_URL + '/api/upload?t=' + Date.now(), {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                addResult('📤 Upload Test Sonucu', data, data.success);
+                
+                if (data.success) {
+                    // Upload başarılı olursa galeriyi tekrar test et
+                    setTimeout(testGallery, 1000);
+                }
+            } catch (error) {
+                addResult('❌ Upload Hatası', error.message, false);
+            }
+        }
+        
+        // Sayfa yüklendiğinde otomatik test
+        window.onload = function() {
+            setTimeout(testBackend, 500);
+            setTimeout(testGallery, 1000);
+        };
+    </script>
+</body>
+</html> 
