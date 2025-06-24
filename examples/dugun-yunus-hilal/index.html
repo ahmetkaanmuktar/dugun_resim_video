@@ -10,70 +10,108 @@
     <meta name="cache-control" content="no-cache">
     <meta name="expires" content="0">
     <meta name="pragma" content="no-cache">
-    <title>Düğün Etkinliği - Fotoğraf Yükle & Galeri</title>
-    <link rel="stylesheet" href="style.css?v=6.0.0&rebuild=true">
+    <title>Düğün Fotoğraf & Video Paylaşımı</title>
+    
+    <!-- Modern Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css?v=7.0.0">
+    
+    <!-- Meta Tags -->
+    <meta name="description" content="Düğün anılarınızı paylaşın - Modern fotoğraf ve video yükleme sistemi">
+    <meta name="keywords" content="düğün, fotoğraf, video, paylaşım, anı">
+    <meta name="author" content="Ahmet Kaan Muktar">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Düğün Fotoğraf & Video Paylaşımı">
+    <meta property="og:description" content="Düğün anılarınızı paylaşın ve sevdiklerinizle birlikte yaşayın">
+    <meta property="og:type" content="website">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
 </head>
 <body>
     <div class="container">
+        <!-- Header Section -->
         <header class="header">
             <div class="header-content">
                 <i class="fas fa-camera header-icon"></i>
-                <h1 class="header-title">Düğün Etkinliği <span class="heart">❤️</span></h1>
-                <p class="header-subtitle">Anılarınızı paylaşın - V6.0.0 - TAMAMEN YENİLENDİ</p>
+                <h1 class="header-title">Düğün Etkinliği <span class="heart">💜</span></h1>
+                <p class="header-subtitle">Anılarınızı paylaşın - Modern fotoğraf ve video sistemi</p>
             </div>
         </header>
+
+        <!-- Main Content -->
         <main class="main-content">
-            <section class="upload-section">
-                <div class="upload-card">
-                    <h2><i class="fas fa-cloud-upload-alt"></i> Fotoğraf & Video Yükle</h2>
-                    <form id="uploadForm" enctype="multipart/form-data">
-                        <div class="file-input-container">
-                            <label for="fileInput" class="file-input-label">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <span>Fotoğraf veya video seçin</span>
-                                <small>En fazla 50MB • JPG, PNG, MP4, MOV</small>
-                            </label>
-                            <input type="file" id="fileInput" name="file" accept="image/*,video/*" required style="display: none;" />
-                        </div>
-                        <button type="submit" class="upload-btn">
-                            <i class="fas fa-upload"></i> Yükle
-                        </button>
-                    </form>
-                    <div id="uploadStatus"></div>
-                </div>
-            </section>
-            <section class="qr-section">
-                <div class="qr-card">
-                    <h3><i class="fas fa-qrcode"></i> QR Kodu ile Paylaş</h3>
-                    <p>Bu sayfayı başkalarına göndermek için QR kodu okutun:</p>
-                    <div class="qr-container">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://ahmetkaanmuktar.github.io/dugun_resim_video/examples/dugun-yunus-hilal/" alt="QR Kod" class="qr-code">
+            
+            <!-- Upload Section -->
+            <section class="upload-card">
+                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                <h2><i class="fas fa-upload"></i> Fotoğraf & Video Yükle</h2>
+                <p>Fotoğraf veya video seçin<br>En fazla 50MB • JPG, PNG, MP4, MOV</p>
+
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="file-input-container">
+                        <label for="fileInput" class="file-input-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Fotoğraf veya video seçin</span>
+                            <small>Sürükle bırak veya tıkla</small>
+                        </label>
+                        <input type="file" id="fileInput" name="file" accept="image/*,video/*" style="display: none;">
                     </div>
+                    
+                    <button type="submit" class="upload-btn">
+                        <i class="fas fa-cloud-upload-alt"></i> Yükle
+                    </button>
+                </form>
+            </section>
+
+            <!-- QR Code Section -->
+            <section class="qr-card">
+                <h3><i class="fas fa-qrcode"></i> QR Kodu ile Paylaş</h3>
+                <p>Bu sayfayı başkalarına göndermek için QR kodu okutun:</p>
+                <div class="qr-container">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://ahmetkaanmuktar.github.io/dugun_resim_video/examples/dugun-yunus-hilal/" 
+                         alt="QR Code" class="qr-code">
                 </div>
             </section>
-            <section class="gallery-section">
-                <div class="upload-card">
-                    <i class="fas fa-images upload-icon"></i>
-                    <h2>Fotoğraf & Video Galerisi</h2>
-                    <p>Yüklenen tüm fotoğraf ve videolar burada görüntülenir</p>
-                    <div id="gallery" class="gallery"></div>
-                </div>
-            </section>
+
         </main>
+
+        <!-- Gallery Section -->
+        <section class="gallery-section">
+            <div class="header-content">
+                <i class="fas fa-images header-icon"></i>
+                <h2>Fotoğraf & Video Galerisi</h2>
+                <p>Yüklenen tüm fotoğraf ve videolar burada görüntülenir</p>
+            </div>
+            
+            <div id="gallery" class="gallery">
+                <!-- Galeri JavaScript ile doldurulacak -->
+            </div>
+        </section>
+
+        <!-- Footer -->
         <footer class="footer">
-            <p>❤️ <strong>Ahmet Kaan Muktar</strong> tarafından hazırlanmıştır | <a href="https://www.instagram.com/ahmetkaanmuktar/" target="_blank">@ahmetkaanmuktar</a></p>
+            <div class="footer-content">
+                <span class="footer-text">🎨 Modern tasarım ile hazırlandı</span>
+                <div class="social-links">
+                    <a href="https://instagram.com/ahmetkaanmuktar" class="social-link" target="_blank">
+                        <i class="fab fa-instagram"></i>
+                        <span>@ahmetkaanmuktar</span>
+                    </a>
+                </div>
+            </div>
         </footer>
     </div>
-    <script>
-        // Force reload JavaScript with timestamp
-        const timestamp = new Date().getTime();
-        const script = document.createElement('script');
-        script.src = 'script.js?v=6.0.0&rebuild=true&t=' + timestamp;
-        document.head.appendChild(script);
-    </script>
+
+    <!-- JavaScript -->
+    <script src="script.js?v=7.0.0"></script>
 </body>
 </html> 

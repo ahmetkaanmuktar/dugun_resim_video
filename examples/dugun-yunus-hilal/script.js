@@ -1,9 +1,9 @@
-// 📸 Düğün Fotoğraf Yükleme Sistemi V6.0.0 - TAMAMEN YENİLENDİ
+// 📸 Modern Düğün Fotoğraf Sistemi - Google Drive Entegrasyonu
 const API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
 let OFFLINE_MODE = false;
 let isUploading = false;
 
-console.log('🎉 Düğün Fotoğraf Sistemi V6.0.0 başlatılıyor...');
+console.log('🎉 Modern Düğün Fotoğraf Sistemi başlatılıyor...');
 
 // DOM hazır olduğunda sistemi başlat
 document.addEventListener('DOMContentLoaded', function() {
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Sistem başlatma
 async function initializeSystem() {
     try {
-        showMessage('🔄 Sistem kontrolleri yapılıyor...', 'info');
+        showMessage('🔄 Sistem hazırlanıyor...', 'info');
         
         // Backend bağlantısını test et
         await testBackend();
@@ -28,8 +28,12 @@ async function initializeSystem() {
         
     } catch (error) {
         console.error('❌ Sistem başlatma hatası:', error);
-        showMessage('⚠️ Sistem başlatılırken hata oluştu. Sayfa yenilenecek...', 'error');
-        setTimeout(() => location.reload(), 3000);
+        showMessage('⚠️ Sistem başlatılırken hata oluştu.', 'error');
+        
+        // Offline mode'da da çalışabilir
+        setupUploadForm();
+        setupDragAndDrop();
+        displayEmptyGallery();
     }
 }
 
@@ -39,7 +43,7 @@ async function testBackend() {
         console.log('🔄 Backend test ediliyor...');
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         
         const response = await fetch(`${API_BASE_URL}/`, {
             method: 'GET',
@@ -61,6 +65,13 @@ async function testBackend() {
         OFFLINE_MODE = false;
         enableUploadButton();
         
+        // Debug bilgilerini kontrol et
+        try {
+            await checkDriveConnection();
+        } catch (debugError) {
+            console.warn('Drive bağlantısı kontrol edilemedi:', debugError);
+        }
+        
         return data;
         
     } catch (error) {
@@ -71,12 +82,32 @@ async function testBackend() {
     }
 }
 
+// Drive bağlantısını kontrol et
+async function checkDriveConnection() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/debug`);
+        if (response.ok) {
+            const debug = await response.json();
+            console.log('🔍 Debug bilgileri:', debug);
+            
+            if (!debug.has_credentials) {
+                console.warn('⚠️ Google Drive kimlik bilgileri eksik');
+            }
+            if (!debug.folder_accessible) {
+                console.warn('⚠️ Google Drive klasörüne erişim yok');
+            }
+        }
+    } catch (error) {
+        console.warn('Debug endpoint erişilemedi:', error);
+    }
+}
+
 // Upload butonunu aktif et
 function enableUploadButton() {
     const btn = document.querySelector('.upload-btn');
     if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-upload"></i> Fotoğraf Yükle';
+        btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Fotoğraf Yükle';
         btn.style.opacity = '1';
     }
 }
@@ -113,7 +144,7 @@ function setupUploadForm() {
     const label = document.querySelector('.file-input-label');
     if (label) {
         label.addEventListener('click', () => {
-            if (!OFFLINE_MODE && !isUploading) {
+            if (!isUploading) {
                 fileInput.click();
             }
         });
@@ -136,31 +167,27 @@ function handleFileSelection(event) {
     }
     
     // Dosya tipi kontrolü
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'video/mp4', 'video/mov', 'video/avi'];
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/mov', 'video/avi'];
     if (!allowedTypes.includes(file.type)) {
-        showMessage('❌ Sadece fotoğraf (JPG, PNG, GIF) ve video (MP4, MOV, AVI) dosyaları yüklenebilir!', 'error');
+        showMessage('❌ Sadece fotoğraf (JPG, PNG, GIF, WEBP) ve video (MP4, MOV, AVI) dosyaları desteklenir!', 'error');
         event.target.value = '';
         return;
     }
     
     const fileSize = (file.size / 1024 / 1024).toFixed(2);
-    showMessage(`📁 ${file.name} seçildi (${fileSize} MB) - Yüklemeye hazır!`, 'success');
+    showMessage(`📁 ${file.name} seçildi (${fileSize} MB)`, 'success');
     
     // Upload label güncelle
     const label = document.querySelector('.file-input-label span');
     if (label) {
-        label.textContent = `Seçilen: ${file.name}`;
+        label.textContent = `✓ ${file.name} seçildi`;
+        label.parentElement.classList.add('file-selected');
     }
 }
 
 // Upload handler
 async function handleUpload(event) {
     event.preventDefault();
-    
-    if (OFFLINE_MODE) {
-        showMessage('❌ İnternet bağlantınızı kontrol edin!', 'error');
-        return;
-    }
     
     if (isUploading) {
         showMessage('⏳ Zaten bir yükleme işlemi devam ediyor...', 'warning');
@@ -194,21 +221,26 @@ async function handleUpload(event) {
         if (result.success) {
             updateProgress(100, 'Tamamlandı!');
             
+            const driveStatus = result.drive_status === 'backed_up' ? 
+                '✅ Google Drive\'a yedeklendi!' : 
+                '💾 Sunucuda saklandı';
+            
             setTimeout(async () => {
                 hideProgressModal();
-                showMessage(`✅ ${file.name} başarıyla yüklendi!`, 'success');
+                showMessage(`✅ ${file.name} başarıyla yüklendi! ${driveStatus}`, 'success');
                 
                 // Form temizle
                 fileInput.value = '';
                 const label = document.querySelector('.file-input-label span');
                 if (label) {
                     label.textContent = 'Fotoğraf veya video seçin';
+                    label.parentElement.classList.remove('file-selected');
                 }
                 
                 // Galeriyi yenile
                 await loadGallery();
                 
-            }, 1500);
+            }, 2000);
             
         } else {
             throw new Error(result.error || 'Yükleme başarısız');
@@ -273,7 +305,7 @@ function showProgressModal() {
             <div class="modal-overlay">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <i class="fas fa-cloud-upload-alt"></i>
+                        <i class="fas fa-cloud-upload-alt pulse"></i>
                         <h3>Fotoğraf Yükleniyor</h3>
                     </div>
                     <div class="progress-wrapper">
@@ -289,18 +321,18 @@ function showProgressModal() {
                             <span>Dosya</span>
                         </div>
                         <div class="upload-arrow">
-                            <i class="fas fa-arrow-right"></i>
+                            <i class="fas fa-arrow-right bounce"></i>
                         </div>
                         <div class="upload-step">
-                            <i class="fas fa-cloud"></i>
+                            <i class="fas fa-server"></i>
                             <span>Sunucu</span>
                         </div>
                         <div class="upload-arrow">
-                            <i class="fas fa-arrow-right"></i>
+                            <i class="fas fa-arrow-right bounce"></i>
                         </div>
                         <div class="upload-step">
-                            <i class="fas fa-check-circle"></i>
-                            <span>Tamamlandı</span>
+                            <i class="fab fa-google-drive"></i>
+                            <span>Drive</span>
                         </div>
                     </div>
                 </div>
@@ -331,8 +363,11 @@ function updateProgress(percent, message) {
     if (percent > 30 && steps[1]) {
         steps[1].classList.add('active');
     }
-    if (percent >= 100 && steps[2]) {
+    if (percent > 70 && steps[2]) {
         steps[2].classList.add('active');
+    }
+    if (percent >= 100) {
+        steps.forEach(step => step.classList.add('completed'));
         if (fill) fill.style.background = 'linear-gradient(90deg, #10b981, #059669)';
     }
 }
@@ -345,21 +380,40 @@ function hideProgressModal() {
     }
 }
 
-// Galeri yükleme
+// Galeri yükleme - Hem local hem Drive dosyalarını göster
 async function loadGallery() {
     try {
         console.log('📷 Galeri yükleniyor...');
         
-        const response = await fetch(`${API_BASE_URL}/api/gallery`);
-        if (!response.ok) {
-            throw new Error(`Galeri yüklenemedi: ${response.status}`);
+        // Hem local hem Drive dosyalarını al
+        const [localResponse, driveResponse] = await Promise.allSettled([
+            fetch(`${API_BASE_URL}/api/gallery`),
+            fetch(`${API_BASE_URL}/api/drive-gallery`).catch(e => ({ ok: false }))
+        ]);
+        
+        let allFiles = [];
+        
+        // Local dosyalar
+        if (localResponse.status === 'fulfilled' && localResponse.value.ok) {
+            const localData = await localResponse.value.json();
+            if (localData.success && localData.files) {
+                allFiles = [...allFiles, ...localData.files.map(f => ({...f, source: 'local'}))];
+            }
         }
         
-        const data = await response.json();
+        // Drive dosyalar
+        if (driveResponse.status === 'fulfilled' && driveResponse.value.ok) {
+            const driveData = await driveResponse.value.json();
+            if (driveData.success && driveData.files) {
+                allFiles = [...allFiles, ...driveData.files.map(f => ({...f, source: 'drive'}))];
+            }
+        }
         
-        if (data.success && data.files && data.files.length > 0) {
-            displayGallery(data.files);
-            console.log(`✅ ${data.files.length} dosya yüklendi`);
+        if (allFiles.length > 0) {
+            // Tarih sırasına göre sırala (en yeni önce)
+            allFiles.sort((a, b) => new Date(b.createdTime || b.uploadTime || 0) - new Date(a.createdTime || a.uploadTime || 0));
+            displayGallery(allFiles);
+            console.log(`✅ ${allFiles.length} dosya bulundu`);
         } else {
             displayEmptyGallery();
             console.log('📁 Galeri boş');
@@ -379,10 +433,12 @@ function displayGallery(files) {
     gallery.innerHTML = files.map(file => {
         const isImage = file.mimeType && file.mimeType.startsWith('image/');
         const isVideo = file.mimeType && file.mimeType.startsWith('video/');
-        const fileUrl = file.webViewLink || file.url;
+        const fileUrl = file.webViewLink || file.url || file.downloadUrl;
         const thumbnailUrl = file.thumbnailLink || file.url || fileUrl;
         const fileName = file.name || 'Bilinmeyen dosya';
-        const fileDate = formatDate(file.createdTime);
+        const fileDate = formatDate(file.createdTime || file.uploadTime);
+        const sourceIcon = file.source === 'drive' ? 'fab fa-google-drive' : 'fas fa-server';
+        const sourceColor = file.source === 'drive' ? '#4285f4' : '#6b7280';
         
         return `
             <div class="gallery-item" onclick="openLightbox('${fileUrl}', '${fileName}', ${isVideo})">
@@ -403,7 +459,10 @@ function displayGallery(files) {
                     `}
                     <div class="gallery-item-info">
                         <div class="file-name">${fileName}</div>
-                        <div class="file-date">${fileDate}</div>
+                        <div class="file-meta">
+                            <span class="file-date">${fileDate}</span>
+                            <i class="${sourceIcon}" style="color: ${sourceColor};" title="${file.source === 'drive' ? 'Google Drive' : 'Sunucu'}"></i>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -420,7 +479,10 @@ function displayEmptyGallery() {
         <div class="empty-gallery">
             <i class="fas fa-images"></i>
             <h3>Henüz fotoğraf yok</h3>
-            <p>İlk fotoğrafı yükleyen siz olun!</p>
+            <p>İlk fotoğrafı yükleyerek galeriye hayat verin!</p>
+            <button onclick="document.getElementById('fileInput').click()" class="retry-btn">
+                <i class="fas fa-plus"></i> İlk Fotoğrafı Yükle
+            </button>
         </div>
     `;
 }
@@ -525,7 +587,7 @@ function showMessage(text, type = 'info') {
         if (toast.parentNode) {
             toast.remove();
         }
-    }, 5000);
+    }, 6000);
 }
 
 // Mesaj ikonu
@@ -543,13 +605,22 @@ function getMessageIcon(type) {
 function formatDate(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleString('tr-TR', {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Az önce';
+    if (diffMins < 60) return `${diffMins} dakika önce`;
+    if (diffHours < 24) return `${diffHours} saat önce`;
+    if (diffDays < 7) return `${diffDays} gün önce`;
+    
+    return date.toLocaleDateString('tr-TR', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: 'numeric'
     });
 }
 
-console.log('✅ Düğün Fotoğraf Sistemi V6.0.0 yüklendi!'); 
+console.log('✅ Modern Düğün Fotoğraf Sistemi yüklendi!'); 
