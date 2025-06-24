@@ -1,4 +1,4 @@
-// 📸 Hızlı Paralel Upload Düğün Fotoğraf Sistemi
+// 📸 2025 Hızlı Paralel Upload Düğün Fotoğraf Sistemi
 var API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
 var selectedFiles = [];
 var isUploading = false;
@@ -66,12 +66,15 @@ function setupFileInput() {
     fileInput.setAttribute('multiple', 'multiple');
     fileInput.setAttribute('accept', 'image/*,video/*');
 
-    // iOS için özel style ayarları
+    // iOS için özel style ayarları - Daha uyumlu hale getir
     if (isIOS) {
         fileInput.style.position = 'absolute';
-        fileInput.style.left = '-9999px';
+        fileInput.style.left = '0';
+        fileInput.style.top = '0';
+        fileInput.style.width = '100%';
+        fileInput.style.height = '100%';
         fileInput.style.opacity = '0';
-        fileInput.style.pointerEvents = 'none';
+        fileInput.style.zIndex = '1';
         console.log('📱 iOS file input ayarlandı');
     }
 
@@ -104,22 +107,31 @@ function setupFileInput() {
         triggerFileInput();
     });
 
-    // Touch events için optimizasyon
+    // Touch events için optimizasyon - Daha güvenilir
     if (isIOS || isMobile) {
         label.addEventListener('touchstart', function (e) {
-            e.preventDefault();
+            console.log('📱 Touch start');
             label.style.transform = 'scale(0.98)';
-        });
+        }, { passive: true });
 
         label.addEventListener('touchend', function (e) {
+            console.log('📱 Touch end');
             e.preventDefault();
             label.style.transform = 'scale(1)';
 
-            setTimeout(function () {
-                if (!isUploading) {
-                    triggerFileInput();
-                }
-            }, 100);
+            if (!isUploading) {
+                console.log('📱 Triggering file input...');
+                fileInput.click();
+            }
+        });
+
+        // Mobil için ekstra click handler
+        label.addEventListener('click', function (e) {
+            console.log('📱 Label clicked on mobile');
+            if (isMobile && !isUploading) {
+                e.preventDefault();
+                fileInput.click();
+            }
         });
     }
 
@@ -252,6 +264,8 @@ function isFileAlreadySelected(newFile) {
 }
 
 function validateFile(file) {
+    console.log('🔍 Dosya doğrulanıyor:', file.name, 'Boyut:', file.size, 'Tip:', file.type);
+
     // Boyut kontrolü - 50MB
     var maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
@@ -259,8 +273,8 @@ function validateFile(file) {
         return false;
     }
 
-    // Minimum boyut kontrolü (1KB)
-    if (file.size < 1024) {
+    // Minimum boyut kontrolü - mobil için daha esnek (100 byte)
+    if (file.size < 100) {
         console.warn('❌ Çok küçük dosya:', file.name, 'Size:', file.size);
         return false;
     }
@@ -277,7 +291,7 @@ function validateFile(file) {
         }
     }
 
-    // MIME type kontrolü
+    // MIME type kontrolü - mobil için daha esnek
     var isValidMime = false;
     if (file.type) {
         var validMimeTypes = ['image/', 'video/'];
@@ -289,12 +303,21 @@ function validateFile(file) {
         }
     }
 
+    // Mobil cihazlarda MIME type bazen yanlış/boş gelebilir
+    if (isMobile && !file.type) {
+        console.log('📱 Mobil: MIME type boş, extension kontrol ediliyor');
+        isValidMime = isValidExtension; // Extension'a güven
+    }
+
     // iOS'da HEIC dosyaları type olarak boş gelebilir
     if (isIOS && (fileName.endsWith('.heic') || fileName.endsWith('.heif'))) {
         isValidMime = true;
     }
 
-    return isValidExtension || isValidMime;
+    var result = isValidExtension || isValidMime;
+    console.log('✅ Doğrulama sonucu:', result, '(Ext:', isValidExtension, 'Mime:', isValidMime, ')');
+
+    return result;
 }
 
 // Dosya sıkıştırma fonksiyonu
@@ -609,8 +632,17 @@ function uploadFilesParallel(filesToUpload) {
 
 function uploadSingleFile(file, fileIndex, totalFiles) {
     return new Promise(function (resolve, reject) {
+        // Kullanıcı adını al
+        var uploaderName = document.getElementById('uploaderName');
+        var userName = uploaderName ? uploaderName.value.trim() : '';
+
         var formData = new FormData();
         formData.append('file', file);
+
+        // Kullanıcı adını ekle (varsa)
+        if (userName) {
+            formData.append('uploader_name', userName);
+        }
 
         var xhr = new XMLHttpRequest();
 

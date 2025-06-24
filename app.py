@@ -9,7 +9,11 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, 
+     origins=["https://ahmetkaanmuktar.github.io", "http://localhost:3000", "http://127.0.0.1:5000"],
+     methods=["GET", "POST", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization"],
+     supports_credentials=True)
 
 # Render için environment variable'ları
 UPLOAD_FOLDER = 'uploads'
@@ -151,21 +155,32 @@ def upload_file():
         
         if 'file' not in request.files:
             print("Hata: 'file' anahtarı bulunamadı")
+            print(f"Available keys: {list(request.files.keys())}")
             return jsonify({'error': 'Dosya bulunamadı'}), 400
         
         file = request.files['file']
+        uploader_name = request.form.get('uploader_name', '').strip()
         print(f"Dosya adı: {file.filename}")
+        print(f"Content-Type: {file.content_type}")
+        print(f"Dosya boyutu: {file.content_length if hasattr(file, 'content_length') else 'Bilinmiyor'}")
+        print(f"Yükleyen: {uploader_name if uploader_name else 'Anonim'}")
         
-        if file.filename == '':
-            print("Hata: Dosya adı boş")
+        if not file or file.filename == '':
+            print("Hata: Dosya adı boş veya dosya yok")
             return jsonify({'error': 'Dosya seçilmedi'}), 400
         
         if file and allowed_file(file.filename):
-            # Unique filename oluştur
+            # Unique filename oluştur (kullanıcı adı ile)
             timestamp = int(time.time())
             filename = secure_filename(file.filename)
             name, ext = os.path.splitext(filename)
-            unique_filename = f"{name}_{timestamp}{ext}"
+            
+            # Dosya adına kullanıcı bilgisini ekle
+            if uploader_name:
+                uploader_safe = secure_filename(uploader_name)[:20]  # İlk 20 karakter
+                unique_filename = f"{uploader_safe}_{name}_{timestamp}{ext}"
+            else:
+                unique_filename = f"anonim_{name}_{timestamp}{ext}"
             
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
             print(f"Dosya kaydediliyor: {filepath}")

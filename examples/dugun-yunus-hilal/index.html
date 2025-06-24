@@ -6,13 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-    <title>📸 Düğün Fotoğraf Sistemi</title>
+    <!-- iOS Safari için -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="format-detection" content="telephone=no">
+
+    <!-- Android Chrome için -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#8b5cf6">
+
+    <title>📸 2025 Düğün Fotoğraf Sistemi</title>
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=12.3.0">
+    <link rel="stylesheet" href="style.css?v=202506242032">
 
     <style>
         /* Critical CSS for immediate loading */
@@ -68,12 +77,27 @@
             <!-- Header -->
             <div class="header">
                 <span class="emoji">📸</span>
-                <h1>Düğün Fotoğraf Sistemi</h1>
+                <h1>2025 Düğün Fotoğraf Sistemi</h1>
                 <p>Anılarınızı hızlıca paylaşın</p>
             </div>
 
             <!-- Upload Section -->
             <div class="upload-section">
+                <!-- Kullanıcı Adı Bölümü -->
+                <div class="user-info-section">
+                    <div class="form-group">
+                        <label for="uploaderName" class="form-label">
+                            <i class="fas fa-user"></i>
+                            <span>Adınız (isteğe bağlı)</span>
+                        </label>
+                        <input type="text" id="uploaderName" name="uploaderName" class="form-input"
+                            placeholder="Örn: Mehmet Yılmaz" maxlength="50">
+                        <small class="form-hint">
+                            💡 İsteğe bağlı - Fotoğrafları kimin yüklediğini takip etmek için
+                        </small>
+                    </div>
+                </div>
+
                 <form id="uploadForm" enctype="multipart/form-data">
                     <div class="file-input-wrapper">
                         <input type="file" id="fileInput" name="file" style="display: none !important;"
@@ -159,7 +183,7 @@
                         </a>
                     </div>
                     <div class="copyright">
-                        <p>&copy; 2024 Düğün Fotoğraf Sistemi</p>
+                        <p>&copy; 2025 Düğün Fotoğraf Sistemi</p>
                     </div>
                 </div>
             </div>
@@ -167,7 +191,7 @@
     </div>
 
     <!-- Scripts -->
-    <script defer src="script.js?v=12.3.0"></script>
+    <script defer src="script.js?v=202506242032"></script>
 
     <!-- Error Handling -->
     <script>

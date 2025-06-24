@@ -912,7 +912,7 @@ body::before {
     opacity: 0.8;
 }
 
-/* Mobile Optimizations */
+/* Mobile Optimizations - Tutarlı görünüm için iyileştirildi */
 @media (max-width: 768px) {
     .container {
         padding: 20px 15px;
@@ -924,41 +924,50 @@ body::before {
     }
 
     .header .emoji {
-        font-size: 3rem;
+        font-size: 3.5rem;
+        /* Daha büyük emoji */
     }
 
     .header h1 {
-        font-size: 2.2rem;
+        font-size: 2.4rem;
+        /* PC'ye daha yakın boyut */
     }
 
     .upload-section {
-        padding: 25px 20px;
+        padding: 30px 25px;
+        /* Daha geniş padding */
     }
 
     .file-input-label {
-        padding: 25px 20px;
+        padding: 30px 25px;
+        /* PC boyutuna yakın */
     }
 
     .file-input-label i {
-        font-size: 2.8rem;
+        font-size: 3rem;
+        /* Daha büyük ikon */
     }
 
     .file-input-label .main-text {
-        font-size: 1.3rem;
+        font-size: 1.4rem;
+        /* Daha büyük metin */
     }
 
     #previewContainer {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 15px;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        /* Daha büyük thumbnails */
+        gap: 18px;
     }
 
     .thumbnail-image {
-        height: 120px;
+        height: 140px;
+        /* Daha büyük thumbnail */
     }
 
     .upload-btn {
-        font-size: 1.1rem;
-        padding: 18px 25px;
+        font-size: 1.2rem;
+        padding: 20px 30px;
+        /* Daha büyük buton */
     }
 
     .modal-content {
@@ -973,12 +982,17 @@ body::before {
     }
 
     .share-buttons {
-        flex-direction: column;
-        align-items: center;
+        flex-direction: row;
+        /* Yatay düzen kalsın */
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
     }
 
     .share-btn {
-        width: 220px;
+        width: auto;
+        /* Otomatik genişlik */
+        min-width: 160px;
         justify-content: center;
         font-size: 0.95rem;
     }
@@ -986,37 +1000,39 @@ body::before {
 
 @media (max-width: 480px) {
     .header h1 {
-        font-size: 1.9rem;
-    }
-
-    .header .speed-indicator {
-        font-size: 0.9rem;
-        padding: 10px 18px;
+        font-size: 2.1rem;
+        /* Daha büyük başlık */
     }
 
     #previewContainer {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        /* Minimum 120px */
+        gap: 15px;
     }
 
     .thumbnail-image {
-        height: 100px;
+        height: 120px;
+        /* Sabit boyut */
     }
 
     .file-stats {
-        flex-direction: column;
+        flex-direction: row;
+        /* Yatay düzen */
+        flex-wrap: wrap;
         gap: 15px;
-        text-align: center;
+        justify-content: center;
     }
 
     .qr-section {
-        padding: 25px 20px;
+        padding: 30px 25px;
+        /* Daha geniş */
     }
 }
 
 @media (max-width: 320px) {
     #previewContainer {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        /* Responsive grid */
     }
 
     .modal-content {
@@ -1024,11 +1040,13 @@ body::before {
     }
 
     .file-input-label .main-text {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
+        /* Daha büyük */
     }
 
     .file-input-label .sub-text {
-        font-size: 0.95rem;
+        font-size: 1rem;
+        /* Daha büyük */
     }
 }
 
@@ -1079,4 +1097,73 @@ body::before {
     100% {
         content: '';
     }
+}
+
+/* User Info Section */
+.user-info-section {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.user-info-section:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    font-weight: 500;
+    font-size: 1rem;
+    margin-bottom: 12px;
+}
+
+.form-label i {
+    color: #8b5cf6;
+    font-size: 1.1rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: white;
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.form-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.form-input:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    transform: translateY(-1px);
+}
+
+.form-hint {
+    display: block;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    margin-top: 8px;
+    padding-left: 4px;
+    font-style: italic;
 }
