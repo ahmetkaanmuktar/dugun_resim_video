@@ -1,4 +1,4 @@
-// 📸 Gelişmiş Thumbnail Preview Düğün Fotoğraf Sistemi
+// 📸 Hızlı Paralel Upload Düğün Fotoğraf Sistemi
 var API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
 var selectedFiles = [];
 var isUploading = false;
@@ -7,7 +7,7 @@ var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.
 
 // Sistem başlatma
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('📱 Gelişmiş Thumbnail Sistem başlatılıyor...');
+    console.log('🚀 Hızlı Upload Sistem başlatılıyor...');
     console.log('🔍 Platform:', isIOS ? 'iOS' : isMobile ? 'Mobile' : 'Desktop');
 
     setTimeout(function () {
@@ -40,8 +40,8 @@ function initializeSystem() {
         // Backend test et
         testBackend();
 
-        console.log('✅ Gelişmiş sistem hazır!');
-        showMessage('📱 Sistem hazır! Fotoğraflarınızı seçmeye başlayın.', 'success');
+        console.log('✅ Hızlı sistem hazır!');
+        showMessage('🚀 Hızlı yükleme sistemi hazır!', 'success');
 
     } catch (error) {
         console.error('❌ Sistem başlatma hatası:', error);
@@ -297,6 +297,63 @@ function validateFile(file) {
     return isValidExtension || isValidMime;
 }
 
+// Dosya sıkıştırma fonksiyonu
+function compressImage(file, maxWidth, quality) {
+    return new Promise(function (resolve, reject) {
+        // Video dosyalarını sıkıştırma
+        if (file.type.startsWith('video/') || file.name.toLowerCase().match(/\.(mp4|mov|avi)$/)) {
+            resolve(file);
+            return;
+        }
+
+        // Küçük dosyaları sıkıştırma (1MB altı)
+        if (file.size < 1024 * 1024) {
+            resolve(file);
+            return;
+        }
+
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        var img = new Image();
+
+        img.onload = function () {
+            // Yeni boyutları hesapla
+            var ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+            var newWidth = img.width * ratio;
+            var newHeight = img.height * ratio;
+
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+
+            // Resmi çiz
+            ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+            // Blob'a çevir
+            canvas.toBlob(function (blob) {
+                if (blob) {
+                    // Dosya adını koru ama sıkıştırıldığını belirt
+                    blob.name = file.name;
+                    blob.lastModified = file.lastModified;
+                    console.log('🗜️ Sıkıştırıldı:', file.name, 'Eski:', (file.size / 1024).toFixed(1) + 'KB', 'Yeni:', (blob.size / 1024).toFixed(1) + 'KB');
+                    resolve(blob);
+                } else {
+                    resolve(file);
+                }
+            }, file.type, quality);
+        };
+
+        img.onerror = function () {
+            resolve(file);
+        };
+
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 function createThumbnail(file) {
     var previewContainer = document.getElementById('previewContainer');
     if (!previewContainer) return;
@@ -428,7 +485,7 @@ function updateUI() {
     if (uploadBtn) {
         if (selectedFiles.length > 0) {
             uploadBtn.disabled = false;
-            uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> ' + selectedFiles.length + ' Dosyayı Yükle';
+            uploadBtn.innerHTML = '<i class="fas fa-rocket"></i> ' + selectedFiles.length + ' Dosyayı Hızlıca Yükle';
             uploadBtn.style.opacity = '1';
         } else {
             uploadBtn.disabled = true;
@@ -443,12 +500,12 @@ function testBackend() {
 
     var xhr = new XMLHttpRequest();
     xhr.open('GET', API_BASE_URL + '/', true);
-    xhr.timeout = 10000;
+    xhr.timeout = 5000; // Daha hızlı timeout
 
     xhr.onload = function () {
         if (xhr.status >= 200 && xhr.status < 300) {
             console.log('✅ Backend çalışıyor');
-            showMessage('🌐 Sunucu bağlantısı başarılı!', 'info');
+            showMessage('🌐 Sunucu hazır - Hızlı yükleme aktif!', 'info');
         } else {
             console.warn('⚠️ Backend yanıt vermiyor:', xhr.status);
             showMessage('⚠️ Sunucu bağlantısında sorun var, yine de deneyin.', 'warning');
@@ -481,111 +538,151 @@ function handleUpload(event) {
         return;
     }
 
-    // Upload onayı al
-    var confirmMessage = selectedFiles.length + ' dosyayı yüklemek istediğinizden emin misiniz?';
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-
-    // Upload başlat
-    startMultipleUpload();
+    // Upload başlat - hızlı mode
+    startFastUpload();
 }
 
-function startMultipleUpload() {
+function startFastUpload() {
     isUploading = true;
 
-    console.log('🚀 ' + selectedFiles.length + ' dosya yüklenmeye başlıyor...');
+    console.log('🚀 ' + selectedFiles.length + ' dosya hızlı yükleme başlıyor...');
 
     // UI'yi güncelle
     disableUploadButton();
     showProgressModal();
-    updateProgress(0, 'Yükleme başlatılıyor...');
+    updateProgress(0, 'Dosyalar hazırlanıyor...');
 
-    // Dosyaları sırayla yükle
-    uploadFilesSequentially(0, [], []);
+    // Dosyaları sıkıştır ve paralel yükle
+    compressAndUploadFiles();
 }
 
-function disableUploadButton() {
-    var btn = document.querySelector('.upload-btn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
-        btn.style.opacity = '0.7';
+function compressAndUploadFiles() {
+    console.log('🗜️ Dosyalar sıkıştırılıyor...');
+
+    var compressionPromises = [];
+
+    for (var i = 0; i < selectedFiles.length; i++) {
+        var file = selectedFiles[i];
+        compressionPromises.push(compressImage(file, 1920, 0.8)); // Max 1920px, %80 kalite
     }
+
+    Promise.all(compressionPromises).then(function (compressedFiles) {
+        console.log('✅ Tüm dosyalar sıkıştırıldı, paralel yükleme başlıyor...');
+        updateProgress(10, 'Paralel yükleme başlatılıyor...');
+
+        // Paralel yükleme başlat
+        uploadFilesParallel(compressedFiles);
+
+    }).catch(function (error) {
+        console.error('❌ Sıkıştırma hatası:', error);
+        // Sıkıştırma başarısızsa orijinal dosyalarla devam et
+        uploadFilesParallel(selectedFiles);
+    });
 }
 
-function uploadFilesSequentially(currentIndex, successFiles, errorFiles) {
-    if (currentIndex >= selectedFiles.length) {
-        handleAllUploadsComplete(successFiles, errorFiles);
-        return;
-    }
+function uploadFilesParallel(filesToUpload) {
+    var uploadPromises = [];
+    var maxConcurrent = 3; // Aynı anda maksimum 3 dosya
+    var completed = 0;
 
-    var currentFile = selectedFiles[currentIndex];
-    var progress = Math.round((currentIndex / selectedFiles.length) * 100);
+    // Dosyaları gruplara böl
+    for (var i = 0; i < filesToUpload.length; i += maxConcurrent) {
+        var batch = filesToUpload.slice(i, i + maxConcurrent);
 
-    updateProgress(progress, (currentIndex + 1) + '/' + selectedFiles.length + ': ' + currentFile.name);
-
-    // FormData hazırla
-    var formData = new FormData();
-    formData.append('file', currentFile);
-
-    console.log('📤 Yükleniyor:', currentFile.name, 'Size:', currentFile.size);
-
-    // XMLHttpRequest ile upload
-    var xhr = new XMLHttpRequest();
-
-    xhr.addEventListener('load', function () {
-        if (xhr.status === 200) {
-            try {
-                var response = JSON.parse(xhr.responseText);
-                successFiles.push({
-                    file: currentFile,
-                    response: response
-                });
-                console.log('✅ Başarılı:', currentFile.name);
-            } catch (error) {
-                errorFiles.push({
-                    file: currentFile,
-                    error: 'Sunucu yanıtı okunamadı'
-                });
-                console.error('❌ Parse hatası:', currentFile.name);
-            }
-        } else {
-            errorFiles.push({
-                file: currentFile,
-                error: 'Sunucu hatası: ' + xhr.status
-            });
-            console.error('❌ HTTP hatası:', currentFile.name, xhr.status);
+        for (var j = 0; j < batch.length; j++) {
+            var file = batch[j];
+            uploadPromises.push(uploadSingleFile(file, i + j + 1, filesToUpload.length));
         }
+    }
 
-        uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
+    // Tüm upload'ları başlat
+    Promise.allSettled(uploadPromises).then(function (results) {
+        handleParallelUploadResults(results, filesToUpload);
     });
-
-    xhr.addEventListener('error', function () {
-        errorFiles.push({
-            file: currentFile,
-            error: 'İnternet bağlantısı hatası'
-        });
-        console.error('❌ Network hatası:', currentFile.name);
-        uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
-    });
-
-    xhr.timeout = isIOS ? 600000 : 300000;
-    xhr.addEventListener('timeout', function () {
-        errorFiles.push({
-            file: currentFile,
-            error: 'Yükleme çok uzun sürdü'
-        });
-        console.error('❌ Timeout:', currentFile.name);
-        uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
-    });
-
-    xhr.open('POST', API_BASE_URL + '/api/upload');
-    xhr.send(formData);
 }
 
-function handleAllUploadsComplete(successFiles, errorFiles) {
-    console.log('📊 Upload tamamlandı. Başarılı:', successFiles.length, 'Hatalı:', errorFiles.length);
+function uploadSingleFile(file, fileIndex, totalFiles) {
+    return new Promise(function (resolve, reject) {
+        var formData = new FormData();
+        formData.append('file', file);
+
+        var xhr = new XMLHttpRequest();
+
+        // Progress tracking
+        xhr.upload.addEventListener('progress', function (e) {
+            if (e.lengthComputable) {
+                var fileProgress = Math.round((e.loaded / e.total) * 100);
+                var overallProgress = 10 + Math.round(((fileIndex - 1) / totalFiles) * 80) + Math.round((fileProgress / totalFiles) * 80 / 100);
+                updateProgress(overallProgress, 'Yükleniyor: ' + file.name + ' (' + fileProgress + '%)');
+            }
+        });
+
+        xhr.addEventListener('load', function () {
+            if (xhr.status === 200) {
+                try {
+                    var response = JSON.parse(xhr.responseText);
+                    console.log('✅ Upload başarılı:', file.name);
+                    resolve({
+                        success: true,
+                        file: file,
+                        response: response
+                    });
+                } catch (error) {
+                    console.error('❌ Parse hatası:', file.name);
+                    reject({
+                        success: false,
+                        file: file,
+                        error: 'Sunucu yanıtı okunamadı'
+                    });
+                }
+            } else {
+                console.error('❌ HTTP hatası:', file.name, xhr.status);
+                reject({
+                    success: false,
+                    file: file,
+                    error: 'Sunucu hatası: ' + xhr.status
+                });
+            }
+        });
+
+        xhr.addEventListener('error', function () {
+            console.error('❌ Network hatası:', file.name);
+            reject({
+                success: false,
+                file: file,
+                error: 'İnternet bağlantısı hatası'
+            });
+        });
+
+        // Daha kısa timeout - hızlı yanıt
+        xhr.timeout = 60000; // 1 dakika
+        xhr.addEventListener('timeout', function () {
+            console.error('❌ Timeout:', file.name);
+            reject({
+                success: false,
+                file: file,
+                error: 'Yükleme çok uzun sürdü'
+            });
+        });
+
+        xhr.open('POST', API_BASE_URL + '/api/upload');
+        xhr.send(formData);
+    });
+}
+
+function handleParallelUploadResults(results, filesToUpload) {
+    var successFiles = [];
+    var errorFiles = [];
+
+    results.forEach(function (result) {
+        if (result.status === 'fulfilled') {
+            successFiles.push(result.value);
+        } else {
+            errorFiles.push(result.reason);
+        }
+    });
+
+    console.log('📊 Paralel upload tamamlandı. Başarılı:', successFiles.length, 'Hatalı:', errorFiles.length);
 
     updateProgress(100, 'Tamamlandı!');
 
@@ -594,16 +691,12 @@ function handleAllUploadsComplete(successFiles, errorFiles) {
 
         var message = '';
         if (successFiles.length > 0 && errorFiles.length === 0) {
-            message = '✅ ' + successFiles.length + ' dosya başarıyla yüklendi!';
+            message = '🚀 ' + successFiles.length + ' dosya hızlıca yüklendi!';
             showMessage(message, 'success');
-
-            // Başarılı yükleme sonrası seçimi temizle
             clearAllFiles();
         } else if (successFiles.length > 0 && errorFiles.length > 0) {
             message = '⚠️ ' + successFiles.length + ' dosya yüklendi, ' + errorFiles.length + ' dosyada hata oluştu.';
             showMessage(message, 'warning');
-
-            // Başarılı olanları listeden kaldır
             removeSuccessfulFiles(successFiles);
         } else {
             message = '❌ Hiçbir dosya yüklenemedi! (' + errorFiles.length + ' hata)';
@@ -613,7 +706,16 @@ function handleAllUploadsComplete(successFiles, errorFiles) {
         isUploading = false;
         updateUI();
 
-    }, 2000);
+    }, 1000); // Daha hızlı sonuç gösterimi
+}
+
+function disableUploadButton() {
+    var btn = document.querySelector('.upload-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-rocket fa-spin"></i> Hızlı Yükleniyor...';
+        btn.style.opacity = '0.7';
+    }
 }
 
 function removeSuccessfulFiles(successFiles) {
@@ -643,8 +745,8 @@ function showProgressModal() {
             '<div class="modal-overlay">' +
             '<div class="modal-content">' +
             '<div class="modal-header">' +
-            '<i class="fas fa-cloud-upload-alt pulse"></i>' +
-            '<h3>Fotoğraflar Yükleniyor</h3>' +
+            '<i class="fas fa-rocket pulse"></i>' +
+            '<h3>Hızlı Yükleme</h3>' +
             '</div>' +
             '<div class="progress-wrapper">' +
             '<div class="progress-bar">' +
@@ -670,13 +772,19 @@ function updateProgress(percent, message) {
     var text = modal.querySelector('.progress-text');
     var msg = modal.querySelector('.progress-message');
 
-    if (fill) fill.style.width = percent + '%';
+    if (fill) {
+        fill.style.width = percent + '%';
+        // Hızlı yükleme için farklı renkler
+        if (percent < 30) {
+            fill.style.background = 'linear-gradient(90deg, #3b82f6, #1d4ed8)'; // Mavi
+        } else if (percent < 70) {
+            fill.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)'; // Turuncu
+        } else {
+            fill.style.background = 'linear-gradient(90deg, #10b981, #059669)'; // Yeşil
+        }
+    }
     if (text) text.textContent = percent + '%';
     if (msg) msg.textContent = message;
-
-    if (percent >= 100) {
-        if (fill) fill.style.background = 'linear-gradient(90deg, #10b981, #059669)';
-    }
 }
 
 function hideProgressModal() {
@@ -709,7 +817,7 @@ function showMessage(text, type) {
         if (toast && toast.parentNode) {
             toast.parentNode.removeChild(toast);
         }
-    }, type === 'error' ? 10000 : 6000);
+    }, type === 'error' ? 8000 : 4000); // Daha hızlı mesaj temizleme
 }
 
 function getMessageIcon(type) {
@@ -717,9 +825,50 @@ function getMessageIcon(type) {
         'success': 'check-circle',
         'error': 'exclamation-circle',
         'warning': 'exclamation-triangle',
-        'info': 'info-circle'
+        'info': 'rocket'
     };
     return icons[type] || 'info-circle';
 }
 
-console.log('✅ Gelişmiş Thumbnail Preview Düğün Sistemi yüklendi!'); 
+// Link kopyalama fonksiyonu
+function copyToClipboard() {
+    var url = 'https://ahmetkaanmuktar.github.io/dugun_resim_video/examples/dugun-yunus-hilal/';
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        // Modern browsers
+        navigator.clipboard.writeText(url).then(function () {
+            showMessage('🔗 Link panoya kopyalandı!', 'success');
+        }).catch(function (err) {
+            fallbackCopyToClipboard(url);
+        });
+    } else {
+        // Fallback for older browsers
+        fallbackCopyToClipboard(url);
+    }
+}
+
+function fallbackCopyToClipboard(text) {
+    var textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        var successful = document.execCommand('copy');
+        if (successful) {
+            showMessage('🔗 Link panoya kopyalandı!', 'success');
+        } else {
+            showMessage('❌ Link kopyalanamadı. Manuel olarak kopyalayın.', 'error');
+        }
+    } catch (err) {
+        showMessage('❌ Link kopyalanamadı. Manuel olarak kopyalayın.', 'error');
+    }
+
+    document.body.removeChild(textArea);
+}
+
+console.log('✅ Hızlı Paralel Upload Düğün Sistemi yüklendi!'); 
