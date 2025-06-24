@@ -485,7 +485,7 @@ function updateUI() {
     if (uploadBtn) {
         if (selectedFiles.length > 0) {
             uploadBtn.disabled = false;
-            uploadBtn.innerHTML = '<i class="fas fa-rocket"></i> ' + selectedFiles.length + ' Dosyayı Hızlıca Yükle';
+            uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> ' + selectedFiles.length + ' Dosyayı Yükle';
             uploadBtn.style.opacity = '1';
         } else {
             uploadBtn.disabled = true;
@@ -500,7 +500,7 @@ function testBackend() {
 
     var xhr = new XMLHttpRequest();
     xhr.open('GET', API_BASE_URL + '/', true);
-    xhr.timeout = 5000; // Daha hızlı timeout
+    xhr.timeout = 3000; // Çok hızlı timeout
 
     xhr.onload = function () {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -582,7 +582,7 @@ function compressAndUploadFiles() {
 
 function uploadFilesParallel(filesToUpload) {
     var uploadPromises = [];
-    var maxConcurrent = 3; // Aynı anda maksimum 3 dosya
+    var maxConcurrent = 5; // Aynı anda maksimum 5 dosya - ultra hızlı
     var completed = 0;
 
     // Dosyaları gruplara böl
@@ -654,8 +654,8 @@ function uploadSingleFile(file, fileIndex, totalFiles) {
             });
         });
 
-        // Daha kısa timeout - hızlı yanıt
-        xhr.timeout = 60000; // 1 dakika
+        // Ultra hızlı timeout
+        xhr.timeout = 30000; // 30 saniye
         xhr.addEventListener('timeout', function () {
             console.error('❌ Timeout:', file.name);
             reject({
@@ -706,14 +706,14 @@ function handleParallelUploadResults(results, filesToUpload) {
         isUploading = false;
         updateUI();
 
-    }, 1000); // Daha hızlı sonuç gösterimi
+    }, 500); // Ultra hızlı sonuç gösterimi
 }
 
 function disableUploadButton() {
     var btn = document.querySelector('.upload-btn');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-rocket fa-spin"></i> Hızlı Yükleniyor...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
         btn.style.opacity = '0.7';
     }
 }
@@ -745,8 +745,8 @@ function showProgressModal() {
             '<div class="modal-overlay">' +
             '<div class="modal-content">' +
             '<div class="modal-header">' +
-            '<i class="fas fa-rocket pulse"></i>' +
-            '<h3>Hızlı Yükleme</h3>' +
+            '<i class="fas fa-cloud-upload-alt pulse"></i>' +
+            '<h3>Fotoğraf Yükleniyor</h3>' +
             '</div>' +
             '<div class="progress-wrapper">' +
             '<div class="progress-bar">' +
@@ -817,7 +817,7 @@ function showMessage(text, type) {
         if (toast && toast.parentNode) {
             toast.parentNode.removeChild(toast);
         }
-    }, type === 'error' ? 8000 : 4000); // Daha hızlı mesaj temizleme
+    }, type === 'error' ? 5000 : 2500); // Ultra hızlı mesaj temizleme
 }
 
 function getMessageIcon(type) {
