@@ -1,6 +1,6 @@
-// 📸 Basit ve Güvenilir Düğün Fotoğraf Sistemi
+// 📸 Basit ve Güvenilir Düğün Fotoğraf Sistemi - Multiple File Support
 var API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
-var currentFile = null;
+var selectedFiles = [];
 var isUploading = false;
 
 // Sistem başlatma - basit ve etkili
@@ -36,7 +36,7 @@ function initializeSystem() {
         testBackend();
 
         console.log('✅ Sistem hazır!');
-        showMessage('📱 Sistem hazır! Fotoğrafınızı seçin.', 'success');
+        showMessage('📱 Sistem hazır! Fotoğraflarınızı seçin.', 'success');
 
     } catch (error) {
         console.error('❌ Sistem başlatma hatası:', error);
@@ -57,9 +57,12 @@ function setupFileInput() {
 
     if (!fileInput || !label) return;
 
-    // File input change - en basit yöntem
+    // Multiple file selection aktif et
+    fileInput.setAttribute('multiple', 'multiple');
+
+    // File input change - multiple files
     fileInput.addEventListener('change', function (e) {
-        handleFileSelection(e.target.files[0]);
+        handleMultipleFileSelection(e.target.files);
     });
 
     // Label click
@@ -69,7 +72,7 @@ function setupFileInput() {
         }
     });
 
-    // Basit drag & drop
+    // Basit drag & drop - multiple files
     label.addEventListener('dragover', function (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -89,39 +92,59 @@ function setupFileInput() {
 
         var files = e.dataTransfer.files;
         if (files && files.length > 0) {
-            handleFileSelection(files[0]);
+            handleMultipleFileSelection(files);
         }
     });
 }
 
-function handleFileSelection(file) {
-    if (!file) {
+function handleMultipleFileSelection(files) {
+    if (!files || files.length === 0) {
         console.log('❌ Dosya seçilmedi');
         return;
     }
 
-    console.log('📁 Dosya seçildi:', file.name, '(', (file.size / 1024 / 1024).toFixed(2), 'MB)');
+    console.log('📁 ' + files.length + ' dosya seçildi');
 
-    // Dosya kontrolü
-    if (!validateFile(file)) {
-        return;
+    // Mevcut seçimi temizle
+    selectedFiles = [];
+
+    // Her dosyayı kontrol et ve ekle
+    var validFiles = [];
+    var invalidCount = 0;
+
+    for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        if (validateFile(file)) {
+            validFiles.push(file);
+        } else {
+            invalidCount++;
+        }
     }
 
-    // Global dosyayı sakla
-    currentFile = file;
+    // Geçerli dosyaları sakla
+    selectedFiles = validFiles;
 
-    // UI'yi güncelle
-    updateFileLabel(file);
-    enableUploadButton();
+    if (selectedFiles.length > 0) {
+        // UI'yi güncelle
+        updateMultipleFileLabel();
+        enableUploadButton();
 
-    showMessage('✅ ' + file.name + ' seçildi. Yükle butonuna tıklayın!', 'success');
+        var message = '✅ ' + selectedFiles.length + ' dosya seçildi!';
+        if (invalidCount > 0) {
+            message += ' (' + invalidCount + ' dosya geçersiz)';
+        }
+        showMessage(message, 'success');
+    } else {
+        showMessage('❌ Hiç geçerli dosya seçilmedi!', 'error');
+        resetForm();
+    }
 }
 
 function validateFile(file) {
     // Boyut kontrolü - 50MB
     var maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
-        showMessage('❌ Dosya boyutu çok büyük! Maksimum 50MB olmalı.', 'error');
+        console.warn('❌ Büyük dosya:', file.name);
         return false;
     }
 
@@ -149,18 +172,27 @@ function validateFile(file) {
     }
 
     if (!isValid) {
-        showMessage('❌ Desteklenmeyen dosya formatı! JPG, PNG, MP4 gibi fotoğraf/video dosyaları seçin.', 'error');
+        console.warn('❌ Geçersiz format:', file.name);
         return false;
     }
 
     return true;
 }
 
-function updateFileLabel(file) {
+function updateMultipleFileLabel() {
     var label = document.querySelector('.file-input-label span');
-    if (label) {
-        var fileSize = (file.size / 1024 / 1024).toFixed(1);
-        label.textContent = '✓ ' + file.name + ' (' + fileSize + ' MB)';
+    if (label && selectedFiles.length > 0) {
+        if (selectedFiles.length === 1) {
+            var fileSize = (selectedFiles[0].size / 1024 / 1024).toFixed(1);
+            label.textContent = '✓ ' + selectedFiles[0].name + ' (' + fileSize + ' MB)';
+        } else {
+            var totalSize = 0;
+            for (var i = 0; i < selectedFiles.length; i++) {
+                totalSize += selectedFiles[i].size;
+            }
+            var totalSizeMB = (totalSize / 1024 / 1024).toFixed(1);
+            label.textContent = '✓ ' + selectedFiles.length + ' dosya seçildi (' + totalSizeMB + ' MB)';
+        }
         label.parentElement.classList.add('file-selected');
     }
 }
@@ -169,7 +201,11 @@ function enableUploadButton() {
     var btn = document.querySelector('.upload-btn');
     if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Fotoğrafı Yükle';
+        if (selectedFiles.length === 1) {
+            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Fotoğrafı Yükle';
+        } else {
+            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> ' + selectedFiles.length + ' Dosyayı Yükle';
+        }
         btn.style.opacity = '1';
     }
 }
@@ -221,24 +257,40 @@ function handleUpload(event) {
         return;
     }
 
-    if (!currentFile) {
-        showMessage('📁 Önce bir dosya seçin!', 'error');
+    if (!selectedFiles || selectedFiles.length === 0) {
+        showMessage('📁 Önce dosya seçin!', 'error');
         return;
     }
 
     // Upload başlat
-    startUpload();
+    startMultipleUpload();
 }
 
-function startUpload() {
+function startMultipleUpload() {
     isUploading = true;
 
-    console.log('🚀 Upload başlatılıyor:', currentFile.name);
+    console.log('🚀 ' + selectedFiles.length + ' dosya yüklenmeye başlıyor...');
 
     // UI'yi güncelle
     disableUploadButton('<i class="fas fa-spinner fa-spin"></i> Yükleniyor...');
     showProgressModal();
     updateProgress(0, 'Yükleme başlatılıyor...');
+
+    // Dosyaları sırayla yükle
+    uploadFilesSequentially(0, [], []);
+}
+
+function uploadFilesSequentially(currentIndex, successFiles, errorFiles) {
+    if (currentIndex >= selectedFiles.length) {
+        // Tüm dosyalar işlendi
+        handleAllUploadsComplete(successFiles, errorFiles);
+        return;
+    }
+
+    var currentFile = selectedFiles[currentIndex];
+    var progress = Math.round((currentIndex / selectedFiles.length) * 100);
+
+    updateProgress(progress, (currentIndex + 1) + '/' + selectedFiles.length + ': ' + currentFile.name);
 
     // FormData hazırla
     var formData = new FormData();
@@ -247,39 +299,58 @@ function startUpload() {
     // XMLHttpRequest ile upload
     var xhr = new XMLHttpRequest();
 
-    // Progress tracking
-    if (xhr.upload) {
-        xhr.upload.addEventListener('progress', function (e) {
-            if (e.lengthComputable) {
-                var percent = Math.round((e.loaded / e.total) * 100);
-                updateProgress(percent, 'Yükleniyor... ' + percent + '%');
-            }
-        });
-    }
-
     // Success handler
     xhr.addEventListener('load', function () {
         if (xhr.status === 200) {
             try {
                 var response = JSON.parse(xhr.responseText);
-                handleUploadSuccess(response);
+                successFiles.push({
+                    file: currentFile,
+                    response: response
+                });
+                console.log('✅ Başarılı:', currentFile.name);
             } catch (error) {
-                handleUploadError('Sunucu yanıtı okunamadı');
+                errorFiles.push({
+                    file: currentFile,
+                    error: 'Sunucu yanıtı okunamadı'
+                });
+                console.error('❌ Parse hatası:', currentFile.name);
             }
         } else {
-            handleUploadError('Sunucu hatası: ' + xhr.status);
+            errorFiles.push({
+                file: currentFile,
+                error: 'Sunucu hatası: ' + xhr.status
+            });
+            console.error('❌ HTTP hatası:', currentFile.name, xhr.status);
         }
+
+        // Sonraki dosyaya geç
+        uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
     });
 
     // Error handler
     xhr.addEventListener('error', function () {
-        handleUploadError('İnternet bağlantısı hatası');
+        errorFiles.push({
+            file: currentFile,
+            error: 'İnternet bağlantısı hatası'
+        });
+        console.error('❌ Network hatası:', currentFile.name);
+
+        // Sonraki dosyaya geç
+        uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
     });
 
     // Timeout handler
     xhr.timeout = 300000; // 5 dakika
     xhr.addEventListener('timeout', function () {
-        handleUploadError('Yükleme çok uzun sürdü');
+        errorFiles.push({
+            file: currentFile,
+            error: 'Yükleme çok uzun sürdü'
+        });
+        console.error('❌ Timeout:', currentFile.name);
+
+        // Sonraki dosyaya geç
+        uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
     });
 
     // Send request
@@ -287,18 +358,42 @@ function startUpload() {
     xhr.send(formData);
 }
 
-function handleUploadSuccess(response) {
-    console.log('✅ Upload başarılı:', response);
+function handleAllUploadsComplete(successFiles, errorFiles) {
+    console.log('📊 Upload tamamlandı. Başarılı:', successFiles.length, 'Hatalı:', errorFiles.length);
 
     updateProgress(100, 'Tamamlandı!');
 
-    var driveStatus = response.drive_status === 'backed_up' ?
-        '🔄 Google Drive\'a yedeklendi!' :
-        '💾 Sunucuda saklandı';
-
     setTimeout(function () {
         hideProgressModal();
-        showMessage('✅ ' + currentFile.name + ' başarıyla yüklendi! ' + driveStatus, 'success');
+
+        var message = '';
+        if (successFiles.length > 0 && errorFiles.length === 0) {
+            // Tümü başarılı
+            message = '✅ ' + successFiles.length + ' dosya başarıyla yüklendi!';
+            showMessage(message, 'success');
+        } else if (successFiles.length > 0 && errorFiles.length > 0) {
+            // Kısmen başarılı
+            message = '⚠️ ' + successFiles.length + ' dosya yüklendi, ' + errorFiles.length + ' dosyada hata oluştu.';
+            showMessage(message, 'warning');
+        } else {
+            // Hepsi başarısız
+            message = '❌ Hiçbir dosya yüklenemedi! (' + errorFiles.length + ' hata)';
+            showMessage(message, 'error');
+        }
+
+        // Detaylı sonuç göster
+        if (errorFiles.length > 0) {
+            setTimeout(function () {
+                var errorDetails = 'Hatalı dosyalar:\n';
+                for (var i = 0; i < Math.min(errorFiles.length, 3); i++) {
+                    errorDetails += '• ' + errorFiles[i].file.name + ': ' + errorFiles[i].error + '\n';
+                }
+                if (errorFiles.length > 3) {
+                    errorDetails += '... ve ' + (errorFiles.length - 3) + ' dosya daha';
+                }
+                showMessage(errorDetails, 'error');
+            }, 3000);
+        }
 
         // Formu temizle
         resetForm();
@@ -306,20 +401,9 @@ function handleUploadSuccess(response) {
     }, 2000);
 }
 
-function handleUploadError(errorMessage) {
-    console.error('❌ Upload hatası:', errorMessage);
-
-    hideProgressModal();
-    showMessage('❌ Yükleme hatası: ' + errorMessage, 'error');
-
-    // Upload state'i sıfırla
-    isUploading = false;
-    enableUploadButton();
-}
-
 function resetForm() {
     // Global state temizle
-    currentFile = null;
+    selectedFiles = [];
     isUploading = false;
 
     // File input temizle
@@ -331,7 +415,7 @@ function resetForm() {
     // Label'i sıfırla
     var label = document.querySelector('.file-input-label span');
     if (label) {
-        label.textContent = 'Fotoğraf veya video seçin';
+        label.textContent = 'Fotoğraf veya video seçin (Birden fazla seçebilirsiniz)';
         label.parentElement.classList.remove('file-selected');
     }
 
@@ -351,7 +435,7 @@ function showProgressModal() {
             '<div class="modal-content">' +
             '<div class="modal-header">' +
             '<i class="fas fa-cloud-upload-alt pulse"></i>' +
-            '<h3>Fotoğraf Yükleniyor</h3>' +
+            '<h3>Fotoğraflar Yükleniyor</h3>' +
             '</div>' +
             '<div class="progress-wrapper">' +
             '<div class="progress-bar">' +
@@ -419,7 +503,7 @@ function showMessage(text, type) {
         if (toast && toast.parentNode) {
             toast.parentNode.removeChild(toast);
         }
-    }, type === 'error' ? 8000 : 5000);
+    }, type === 'error' ? 10000 : 6000);
 }
 
 function getMessageIcon(type) {
@@ -432,4 +516,4 @@ function getMessageIcon(type) {
     return icons[type] || 'info-circle';
 }
 
-console.log('✅ Basit ve Güvenilir Düğün Fotoğraf Sistemi yüklendi!'); 
+console.log('✅ Multiple File Upload Düğün Sistemi yüklendi!'); 

@@ -29,8 +29,7 @@ Thumbs.db
 # Upload directories
 uploads/
 
-# Optional scripts with external dependencies
-scripts/
+# Optional directories with external dependencies
 docs/
 admin/
 

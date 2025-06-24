@@ -87,20 +87,20 @@
 
             <!-- Upload Section -->
             <div class="upload-section">
-                <form id="uploadForm" class="upload-form">
+                <form id="uploadForm" enctype="multipart/form-data">
                     <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" name="file" style="display: none !important;"
+                            accept="image/*,video/*">
                         <label for="fileInput" class="file-input-label">
                             <i class="fas fa-cloud-upload-alt"></i>
-                            <span>Fotoğraf veya video seçin</span>
-                            <small style="color: #9ca3af; margin-top: 0.5rem; display: block;">
-                                JPG, PNG, MP4, MOV desteklenir (Max 50MB)
-                            </small>
+                            <span>Fotoğraf veya video seçin (Birden fazla seçebilirsiniz)</span>
+                            <p>Dosyaları buraya sürükleyin veya tıklayın</p>
                         </label>
-                        <input type="file" id="fileInput" accept="image/*,video/*">
                     </div>
 
                     <button type="submit" class="upload-btn" disabled>
-                        <i class="fas fa-cloud-upload-alt"></i> Önce dosya seçin
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        Önce dosya seçin
                     </button>
                 </form>
             </div>
