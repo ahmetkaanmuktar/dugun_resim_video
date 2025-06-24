@@ -1,25 +1,24 @@
 // Düğün Fotoğraf Yükleme Sistemi - Heroku Backend
 const API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
-const CACHE_BUSTER = '?v=' + new Date().getTime(); // Cache buster
 
 // Offline mode flag
 let OFFLINE_MODE = false;
 
 // DOM yüklendiğinde çalışacak fonksiyonlar
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎉 Düğün Fotoğraf Sistemi başlatılıyor...');
     initializeApp();
     setupUploadForm();
     loadGallery();
     setupDragAndDrop();
     
     // Cache temizleme bildirimi
-    showNotification('🔄 Sayfa yenilendi! Sistem kontrol ediliyor...', 'info');
-    console.log('🔄 Cache buster aktif: ' + CACHE_BUSTER);
+    showNotification('🔄 Sistem başlatılıyor...', 'info');
 });
 
 // Uygulama başlatma
 function initializeApp() {
-    console.log('📸 Düğün Fotoğraf Sistemi başlatıldı');
+    console.log('📸 Sistem kontrolleri yapılıyor...');
     testBackendConnection();
 }
 
@@ -33,7 +32,7 @@ async function testBackendConnection() {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
-            timeout: 15000 // 15 second timeout
+            timeout: 15000
         });
         
         if (!response.ok) {
@@ -46,7 +45,7 @@ async function testBackendConnection() {
         
         // Backend'in storage tipini kontrol et
         if (data.storage === 'local_with_drive_backup') {
-            showNotification('✅ Sistem hazır! Dosyalar yüklenebilir.', 'success');
+            showNotification('✅ Sistem hazır! Fotoğraf ve videolarınızı yükleyebilirsiniz.', 'success');
             
             // Upload butonunu aktif et
             const uploadBtn = document.querySelector('.upload-btn');
@@ -60,7 +59,7 @@ async function testBackendConnection() {
         console.error('❌ Backend bağlantı hatası:', error);
         OFFLINE_MODE = true;
         
-        showNotification('⚠️ Backend bağlantısı kurulamıyor. Lütfen sayfayı yenileyin.', 'error');
+        showNotification('⚠️ Sunucu bağlantısı kurulamıyor. Lütfen sayfayı yenileyin.', 'error');
         
         // Offline mode için upload butonunu disable et
         const uploadBtn = document.querySelector('.upload-btn');
@@ -74,7 +73,7 @@ async function testBackendConnection() {
         setTimeout(() => {
             console.log('🔄 Backend tekrar kontrol ediliyor...');
             testBackendConnection();
-        }, 30000); // 30 saniye
+        }, 30000);
     }
 }
 
@@ -86,6 +85,8 @@ function setupUploadForm() {
     if (form && fileInput) {
         form.addEventListener('submit', handleFileUpload);
         fileInput.addEventListener('change', handleFileSelect);
+    } else {
+        console.error('❌ Upload form elemanları bulunamadı!');
     }
 }
 
@@ -97,15 +98,15 @@ function handleFileSelect(event) {
         const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
         
         if (file.size > 50 * 1024 * 1024) { // 50MB limit
-            showNotification('Dosya boyutu 50MB\'dan küçük olmalıdır!', 'error');
+            showNotification('❌ Dosya boyutu 50MB\'dan küçük olmalıdır!', 'error');
             event.target.value = '';
             return;
         }
         
         if (OFFLINE_MODE) {
-            showNotification(`Dosya seçildi: ${file.name} (${fileSize} MB) - Backend hazırlanıyor...`, 'warning');
+            showNotification(`📁 Dosya seçildi: ${file.name} (${fileSize} MB) - Sunucu bağlantısı bekleniyor...`, 'warning');
         } else {
-            showNotification(`Dosya seçildi: ${file.name} (${fileSize} MB)`, 'success');
+            showNotification(`📁 Dosya seçildi: ${file.name} (${fileSize} MB) - Yüklemeye hazır!`, 'success');
         }
     }
 }
@@ -115,7 +116,7 @@ async function handleFileUpload(event) {
     event.preventDefault();
     
     if (OFFLINE_MODE) {
-        showNotification('❌ Backend henüz hazır değil. Lütfen 2-3 dakika bekleyin.', 'error');
+        showNotification('❌ Sunucu bağlantısı yok. Lütfen bekleyin ve tekrar deneyin.', 'error');
         return;
     }
     
@@ -123,7 +124,7 @@ async function handleFileUpload(event) {
     const file = fileInput.files[0];
     
     if (!file) {
-        showNotification('Lütfen bir dosya seçin!', 'error');
+        showNotification('📁 Lütfen bir dosya seçin!', 'error');
         return;
     }
     
@@ -131,6 +132,8 @@ async function handleFileUpload(event) {
     const originalText = uploadBtn.innerHTML;
     
     try {
+        console.log('🚀 Dosya yükleme başlatılıyor:', file.name);
+        
         // Upload butonunu disable et
         uploadBtn.disabled = true;
         uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
@@ -138,30 +141,38 @@ async function handleFileUpload(event) {
         // FormData oluştur
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('cache_buster', new Date().getTime()); // Form data'ya da cache buster ekle
         
-        // Upload progress göster
-        showUploadProgress(0);
+        // Progress bar göster
+        showUploadProgress(0, 'Yükleme başlatılıyor...');
         
-        // Dosyayı backend'e yükle
-        const response = await uploadFileWithProgress(formData);
+        // Minimum 5 saniye progress bar göster
+        const uploadPromise = uploadFileWithProgress(formData);
+        const minTimePromise = new Promise(resolve => setTimeout(resolve, 5000));
+        
+        const [response] = await Promise.all([uploadPromise, minTimePromise]);
         
         if (response.success) {
-            showNotification(`✅ Dosya başarıyla yüklendi! ${response.drive_status === 'backed_up' ? '(Drive\'a da yedeklendi)' : '(Sitede saklanıyor)'}`, 'success');
-            fileInput.value = ''; // Input'u temizle
-            loadGallery(); // Galeriyi yenile
+            showUploadProgress(100, 'Tamamlandı!');
+            setTimeout(() => {
+                hideUploadProgress();
+                showNotification(`✅ Dosya başarıyla yüklendi! ${response.drive_status === 'backed_up' ? '(Google Drive\'a yedeklendi)' : '(Sunucuda saklanıyor)'}`, 'success');
+                fileInput.value = ''; // Input'u temizle
+                loadGallery(); // Galeriyi yenile
+            }, 1000);
         } else {
             throw new Error(response.error || 'Yükleme başarısız');
         }
         
     } catch (error) {
-        console.error('Upload hatası:', error);
+        console.error('❌ Upload hatası:', error);
+        hideUploadProgress();
         showNotification('❌ Dosya yüklenirken hata oluştu: ' + error.message, 'error');
     } finally {
         // Upload butonunu restore et
-        uploadBtn.disabled = false;
-        uploadBtn.innerHTML = originalText;
-        hideUploadProgress();
+        setTimeout(() => {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = originalText;
+        }, 1000);
     }
 }
 
@@ -174,7 +185,7 @@ async function uploadFileWithProgress(formData) {
         xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable) {
                 const percentComplete = (e.loaded / e.total) * 100;
-                showUploadProgress(percentComplete);
+                showUploadProgress(percentComplete, `Yükleniyor... ${Math.round(percentComplete)}%`);
             }
         });
         
@@ -183,13 +194,16 @@ async function uploadFileWithProgress(formData) {
             if (xhr.status === 200) {
                 try {
                     const response = JSON.parse(xhr.responseText);
+                    console.log('✅ Sunucu yanıtı:', response);
                     resolve(response);
                 } catch (error) {
+                    console.error('❌ JSON parse hatası:', error);
                     reject(new Error('Sunucu yanıtı işlenemedi'));
                 }
             } else {
                 try {
                     const errorResponse = JSON.parse(xhr.responseText);
+                    console.error('❌ Sunucu hatası:', errorResponse);
                     reject(new Error(errorResponse.error || 'Sunucu hatası'));
                 } catch (error) {
                     reject(new Error(`Sunucu hatası: ${xhr.status}`));
@@ -198,62 +212,82 @@ async function uploadFileWithProgress(formData) {
         });
         
         xhr.addEventListener('error', () => {
+            console.error('❌ Ağ hatası');
             reject(new Error('Ağ hatası oluştu'));
         });
         
-        // Request gönder
-        xhr.open('POST', `${API_BASE_URL}/api/upload${CACHE_BUSTER}`);
+        // Request gönder - Cache buster kullanma
+        xhr.open('POST', `${API_BASE_URL}/api/upload`);
         xhr.send(formData);
     });
 }
 
-// Upload progress göster
-function showUploadProgress(percent) {
-    let progressBar = document.getElementById('uploadProgress');
+// Gelişmiş upload progress göster
+function showUploadProgress(percent, message = '') {
+    let progressModal = document.getElementById('uploadProgressModal');
     
-    if (!progressBar) {
-        progressBar = document.createElement('div');
-        progressBar.id = 'uploadProgress';
-        progressBar.innerHTML = `
-            <div class="progress-container">
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: 0%"></div>
+    if (!progressModal) {
+        progressModal = document.createElement('div');
+        progressModal.id = 'uploadProgressModal';
+        progressModal.innerHTML = `
+            <div class="progress-modal-overlay">
+                <div class="progress-modal-content">
+                    <div class="progress-header">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h3>Dosya Yükleniyor</h3>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                            <div class="progress-text">0%</div>
+                        </div>
+                        <div class="progress-message">Hazırlanıyor...</div>
+                    </div>
+                    <div class="progress-animation">
+                        <div class="upload-icon">
+                            <i class="fas fa-file-image"></i>
+                        </div>
+                        <div class="upload-arrow">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="cloud-icon">
+                            <i class="fas fa-cloud"></i>
+                        </div>
+                    </div>
                 </div>
-                <span class="progress-text">0%</span>
             </div>
         `;
         
-        // Stil ekle
-        progressBar.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            z-index: 10000;
-            min-width: 300px;
-        `;
-        
-        document.body.appendChild(progressBar);
+        document.body.appendChild(progressModal);
     }
     
-    const progressFill = progressBar.querySelector('.progress-fill');
-    const progressText = progressBar.querySelector('.progress-text');
+    const progressFill = progressModal.querySelector('.progress-fill');
+    const progressText = progressModal.querySelector('.progress-text');
+    const progressMessage = progressModal.querySelector('.progress-message');
     
-    progressFill.style.width = `${percent}%`;
-    progressText.textContent = `${Math.round(percent)}%`;
+    progressFill.style.width = `${Math.min(percent, 100)}%`;
+    progressText.textContent = `${Math.round(Math.min(percent, 100))}%`;
+    progressMessage.textContent = message;
     
-    progressBar.style.display = 'block';
+    // Renk değişimi
+    if (percent >= 100) {
+        progressFill.style.background = 'linear-gradient(90deg, #4ade80, #22c55e)';
+        progressModal.querySelector('.progress-header i').className = 'fas fa-check-circle';
+        progressModal.querySelector('.progress-header h3').textContent = 'Yükleme Tamamlandı';
+    } else if (percent >= 50) {
+        progressFill.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
+    } else {
+        progressFill.style.background = 'linear-gradient(90deg, #667eea, #764ba2)';
+    }
+    
+    progressModal.style.display = 'flex';
 }
 
 // Upload progress gizle
 function hideUploadProgress() {
-    const progressBar = document.getElementById('uploadProgress');
-    if (progressBar) {
-        progressBar.style.display = 'none';
+    const progressModal = document.getElementById('uploadProgressModal');
+    if (progressModal) {
+        progressModal.style.display = 'none';
     }
 }
 
@@ -265,19 +299,21 @@ async function loadGallery() {
             return;
         }
         
-        const response = await fetch(`${API_BASE_URL}/api/gallery${CACHE_BUSTER}`);
+        console.log('📷 Galeri yükleniyor...');
+        const response = await fetch(`${API_BASE_URL}/api/gallery`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
         
         if (data.success && data.files) {
+            console.log(`✅ ${data.files.length} dosya bulundu`);
             displayGallery(data.files);
         } else {
             displayEmptyGallery();
         }
     } catch (error) {
-        console.error('⚠️ Backend bağlantısı yok - offline galeri gösteriliyor:', error);
+        console.error('⚠️ Galeri yüklenemedi:', error);
         displayOfflineGallery();
     }
 }
@@ -518,12 +554,12 @@ function getNotificationIcon(type) {
 
 function getNotificationColor(type) {
     const colors = {
-        'success': '#10B981',
-        'error': '#EF4444',
-        'warning': '#F59E0B',
-        'info': '#3B82F6'
+        'success': 'linear-gradient(135deg, #4ade80, #22c55e)',
+        'error': 'linear-gradient(135deg, #ef4444, #dc2626)',
+        'warning': 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+        'info': 'linear-gradient(135deg, #667eea, #764ba2)'
     };
-    return colors[type] || '#3B82F6';
+    return colors[type] || colors.info;
 }
 
 // CSS animasyonları
@@ -660,4 +696,82 @@ style.textContent = `
         color: #9CA3AF;
     }
 `;
-document.head.appendChild(style); 
+document.head.appendChild(style);
+
+// CSS Animation injector
+function injectAnimationCSS() {
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: auto;
+        }
+        
+        .retry-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+        
+        .retry-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .lightbox-content {
+            position: relative;
+        }
+        
+        .lightbox-close {
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 10001;
+        }
+        
+        .file-input-label small {
+            display: block;
+            margin-top: 0.5rem;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Sayfa yüklendiğinde CSS'i inject et
+injectAnimationCSS();
+
+console.log('✅ Düğün Fotoğraf Sistemi tamamen yüklendi!'); 

@@ -1,5 +1,5 @@
 // Etkinlik Fotoğraf Sistemi JavaScript Fonksiyonları
-const API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
+const API_BASE_URL = 'http://localhost:5000';
 const CACHE_BUSTER = '?v=' + new Date().getTime(); // Cache buster
 
 // DOM yüklendiğinde çalışacak fonksiyonlar
