@@ -26,9 +26,14 @@ function initializeApp() {
 // Backend bağlantı testi
 async function testBackendConnection() {
     try {
-        const response = await fetch(`${API_BASE_URL}/${CACHE_BUSTER}`, {
+        console.log('🔄 Backend bağlantı testi başlatılıyor...');
+        const response = await fetch(`${API_BASE_URL}`, {
             method: 'GET',
-            timeout: 10000 // 10 second timeout
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            timeout: 15000 // 15 second timeout
         });
         
         if (!response.ok) {
@@ -41,27 +46,35 @@ async function testBackendConnection() {
         
         // Backend'in storage tipini kontrol et
         if (data.storage === 'local_with_drive_backup') {
-            showNotification('✅ Sistem hazır! Dosyalar backend\'e yüklenir.', 'success');
+            showNotification('✅ Sistem hazır! Dosyalar yüklenebilir.', 'success');
+            
+            // Upload butonunu aktif et
+            const uploadBtn = document.querySelector('.upload-btn');
+            if (uploadBtn) {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Yükle';
+                uploadBtn.style.opacity = '1';
+            }
         }
     } catch (error) {
-        console.error('❌ Backend henüz aktif değil:', error);
+        console.error('❌ Backend bağlantı hatası:', error);
         OFFLINE_MODE = true;
         
-        showNotification('⚠️ Backend deploy oluyor. Demo modu aktif. (2-3 dakika bekleyin)', 'warning');
+        showNotification('⚠️ Backend bağlantısı kurulamıyor. Lütfen sayfayı yenileyin.', 'error');
         
         // Offline mode için upload butonunu disable et
         const uploadBtn = document.querySelector('.upload-btn');
         if (uploadBtn) {
             uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<i class="fas fa-clock"></i> Backend Hazırlanıyor...';
+            uploadBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Bağlantı Hatası';
             uploadBtn.style.opacity = '0.6';
         }
         
-        // 2 dakika sonra tekrar dene
+        // 30 saniye sonra tekrar dene
         setTimeout(() => {
             console.log('🔄 Backend tekrar kontrol ediliyor...');
             testBackendConnection();
-        }, 120000); // 2 dakika
+        }, 30000); // 30 saniye
     }
 }
 
