@@ -1,5 +1,6 @@
 // 📸 Modern Düğün Fotoğraf Sistemi - Google Drive Entegrasyonu
 const API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
+const GALLERY_API_KEY = 'Bearer dugun-gallery-key-2024';
 let OFFLINE_MODE = false;
 let isUploading = false;
 
@@ -22,7 +23,9 @@ async function initializeSystem() {
         // Form ve galeriyi hazırla
         setupUploadForm();
         setupDragAndDrop();
-        await loadGallery();
+        
+        // Galeriyi gizle - sadece yükleme özelliği aktif
+        hideGallerySection();
         
         showMessage('✅ Sistem hazır! Fotoğraflarınızı yükleyebilirsiniz.', 'success');
         
@@ -33,7 +36,16 @@ async function initializeSystem() {
         // Offline mode'da da çalışabilir
         setupUploadForm();
         setupDragAndDrop();
-        displayEmptyGallery();
+        hideGallerySection();
+    }
+}
+
+// Galeri bölümünü gizle
+function hideGallerySection() {
+    const gallerySection = document.querySelector('.gallery-section');
+    if (gallerySection) {
+        gallerySection.style.display = 'none';
+        console.log('📷 Galeri bölümü gizlendi (gizlilik için)');
     }
 }
 
@@ -237,9 +249,6 @@ async function handleUpload(event) {
                     label.parentElement.classList.remove('file-selected');
                 }
                 
-                // Galeriyi yenile
-                await loadGallery();
-                
             }, 2000);
             
         } else {
@@ -380,148 +389,6 @@ function hideProgressModal() {
     }
 }
 
-// Galeri yükleme - Hem local hem Drive dosyalarını göster
-async function loadGallery() {
-    try {
-        console.log('📷 Galeri yükleniyor...');
-        
-        // Hem local hem Drive dosyalarını al
-        const [localResponse, driveResponse] = await Promise.allSettled([
-            fetch(`${API_BASE_URL}/api/gallery`),
-            fetch(`${API_BASE_URL}/api/drive-gallery`).catch(e => ({ ok: false }))
-        ]);
-        
-        let allFiles = [];
-        
-        // Local dosyalar
-        if (localResponse.status === 'fulfilled' && localResponse.value.ok) {
-            const localData = await localResponse.value.json();
-            if (localData.success && localData.files) {
-                allFiles = [...allFiles, ...localData.files.map(f => ({...f, source: 'local'}))];
-            }
-        }
-        
-        // Drive dosyalar
-        if (driveResponse.status === 'fulfilled' && driveResponse.value.ok) {
-            const driveData = await driveResponse.value.json();
-            if (driveData.success && driveData.files) {
-                allFiles = [...allFiles, ...driveData.files.map(f => ({...f, source: 'drive'}))];
-            }
-        }
-        
-        if (allFiles.length > 0) {
-            // Tarih sırasına göre sırala (en yeni önce)
-            allFiles.sort((a, b) => new Date(b.createdTime || b.uploadTime || 0) - new Date(a.createdTime || a.uploadTime || 0));
-            displayGallery(allFiles);
-            console.log(`✅ ${allFiles.length} dosya bulundu`);
-        } else {
-            displayEmptyGallery();
-            console.log('📁 Galeri boş');
-        }
-        
-    } catch (error) {
-        console.error('⚠️ Galeri yüklenemedi:', error);
-        displayEmptyGallery();
-    }
-}
-
-// Galeri görüntüleme
-function displayGallery(files) {
-    const gallery = document.getElementById('gallery');
-    if (!gallery) return;
-    
-    gallery.innerHTML = files.map(file => {
-        const isImage = file.mimeType && file.mimeType.startsWith('image/');
-        const isVideo = file.mimeType && file.mimeType.startsWith('video/');
-        const fileUrl = file.webViewLink || file.url || file.downloadUrl;
-        const thumbnailUrl = file.thumbnailLink || file.url || fileUrl;
-        const fileName = file.name || 'Bilinmeyen dosya';
-        const fileDate = formatDate(file.createdTime || file.uploadTime);
-        const sourceIcon = file.source === 'drive' ? 'fab fa-google-drive' : 'fas fa-server';
-        const sourceColor = file.source === 'drive' ? '#4285f4' : '#6b7280';
-        
-        return `
-            <div class="gallery-item" onclick="openLightbox('${fileUrl}', '${fileName}', ${isVideo})">
-                <div class="gallery-item-content">
-                    ${isImage ? `
-                        <img src="${thumbnailUrl}" alt="${fileName}" loading="lazy" />
-                    ` : isVideo ? `
-                        <div class="video-thumbnail">
-                            <img src="${thumbnailUrl}" alt="${fileName}" loading="lazy" />
-                            <div class="play-button">
-                                <i class="fas fa-play"></i>
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="file-placeholder">
-                            <i class="fas fa-file"></i>
-                        </div>
-                    `}
-                    <div class="gallery-item-info">
-                        <div class="file-name">${fileName}</div>
-                        <div class="file-meta">
-                            <span class="file-date">${fileDate}</span>
-                            <i class="${sourceIcon}" style="color: ${sourceColor};" title="${file.source === 'drive' ? 'Google Drive' : 'Sunucu'}"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Boş galeri
-function displayEmptyGallery() {
-    const gallery = document.getElementById('gallery');
-    if (!gallery) return;
-    
-    gallery.innerHTML = `
-        <div class="empty-gallery">
-            <i class="fas fa-images"></i>
-            <h3>Henüz fotoğraf yok</h3>
-            <p>İlk fotoğrafı yükleyerek galeriye hayat verin!</p>
-            <button onclick="document.getElementById('fileInput').click()" class="retry-btn">
-                <i class="fas fa-plus"></i> İlk Fotoğrafı Yükle
-            </button>
-        </div>
-    `;
-}
-
-// Lightbox açma
-function openLightbox(url, filename, isVideo = false) {
-    const lightbox = document.createElement('div');
-    lightbox.className = 'lightbox';
-    lightbox.innerHTML = `
-        <div class="lightbox-content">
-            <button class="lightbox-close" onclick="this.parentElement.parentElement.remove()">
-                <i class="fas fa-times"></i>
-            </button>
-            <div class="lightbox-media">
-                ${isVideo ? `
-                    <video controls autoplay>
-                        <source src="${url}" type="video/mp4">
-                        Video yüklenemedi.
-                    </video>
-                ` : `
-                    <img src="${url}" alt="${filename}" />
-                `}
-            </div>
-            <div class="lightbox-info">
-                <h4>${filename}</h4>
-            </div>
-        </div>
-    `;
-    
-    // Click dışında kapatma
-    lightbox.addEventListener('click', (e) => {
-        if (e.target === lightbox) {
-            lightbox.remove();
-        }
-    });
-    
-    document.body.appendChild(lightbox);
-}
-
 // Drag & Drop
 function setupDragAndDrop() {
     const dropZone = document.querySelector('.file-input-label');
@@ -599,28 +466,6 @@ function getMessageIcon(type) {
         'info': 'info-circle'
     };
     return icons[type] || 'info-circle';
-}
-
-// Tarih formatla
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    
-    if (diffMins < 1) return 'Az önce';
-    if (diffMins < 60) return `${diffMins} dakika önce`;
-    if (diffHours < 24) return `${diffHours} saat önce`;
-    if (diffDays < 7) return `${diffDays} gün önce`;
-    
-    return date.toLocaleDateString('tr-TR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
 }
 
 console.log('✅ Modern Düğün Fotoğraf Sistemi yüklendi!'); 

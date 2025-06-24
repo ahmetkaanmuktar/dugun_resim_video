@@ -199,6 +199,11 @@ def upload_file():
 @app.route('/api/gallery', methods=['GET'])
 def gallery():
     try:
+        # Basit güvenlik kontrolü
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or auth_header != 'Bearer dugun-gallery-key-2024':
+            return jsonify({'success': False, 'error': 'Yetkisiz erişim'}), 403
+        
         # Uploads klasöründeki dosyaları al
         files = []
         upload_path = app.config['UPLOAD_FOLDER']
@@ -248,6 +253,11 @@ def gallery():
 def drive_gallery():
     """Google Drive'daki dosyaları listele"""
     try:
+        # Basit güvenlik kontrolü
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or auth_header != 'Bearer dugun-gallery-key-2024':
+            return jsonify({'success': False, 'error': 'Yetkisiz erişim'}), 403
+            
         print("\n--- DRIVE GALERİ BAŞLATILIYOR ---")
         credentials = get_credentials()
         
@@ -399,6 +409,57 @@ def debug_info():
     except Exception as e:
         print(f"Debug genel hata: {e}")
         return jsonify({'success': False, 'error': str(e), 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')})
+
+# Galeri görüntüleme için özel endpoint (güvenli)
+@app.route('/gallery-view', methods=['GET'])
+def gallery_view():
+    """Güvenli galeri görüntüleme sayfası"""
+    return '''
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Düğün Fotoğraf Galerisi</title>
+        <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 2rem; background: #f5f5f5; }
+            .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem; }
+            .gallery img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+            h1 { color: #333; margin-bottom: 1rem; }
+            .info { color: #666; margin-bottom: 2rem; }
+        </style>
+    </head>
+    <body>
+        <h1>🎉 Düğün Fotoğraf Galerisi</h1>
+        <div class="info">Sadece davetliler için özel galeri</div>
+        <div id="gallery" class="gallery"></div>
+        
+        <script>
+            async function loadGallery() {
+                try {
+                    const response = await fetch('/api/gallery', {
+                        headers: { 'Authorization': 'Bearer dugun-gallery-key-2024' }
+                    });
+                    const data = await response.json();
+                    
+                    const gallery = document.getElementById('gallery');
+                    if (data.success && data.files.length > 0) {
+                        gallery.innerHTML = data.files.map(file => 
+                            `<img src="${file.webViewLink}" alt="${file.name}" onclick="window.open('${file.webViewLink}', '_blank')">`
+                        ).join('');
+                    } else {
+                        gallery.innerHTML = '<p>Henüz fotoğraf yüklenmemiş.</p>';
+                    }
+                } catch (error) {
+                    document.getElementById('gallery').innerHTML = '<p>Galeri yüklenemedi.</p>';
+                }
+            }
+            
+            loadGallery();
+        </script>
+    </body>
+    </html>
+    '''
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

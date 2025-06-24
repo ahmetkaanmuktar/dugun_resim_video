@@ -574,18 +574,29 @@ body::before {
     }
 }
 
-/* Responsive Design */
+/* Responsive Design - Mobil Öncelikli */
 @media (max-width: 768px) {
     .container {
-        padding: 0 15px;
+        padding: 0 10px;
+    }
+
+    .header {
+        margin-bottom: 2rem;
+        padding: 1rem 0;
+    }
+
+    .header-content {
+        padding: 2rem 1.5rem;
     }
 
     .header-title {
-        font-size: 2.2rem;
+        font-size: 2rem;
+        line-height: 1.2;
     }
 
     .header-subtitle {
         font-size: 1rem;
+        line-height: 1.4;
     }
 
     .main-content {
@@ -595,66 +606,337 @@ body::before {
 
     .upload-card,
     .qr-card {
-        padding: 2rem;
-    }
-
-    .upload-btn {
-        font-size: 1.1rem;
-        padding: 1rem 2rem;
-    }
-
-    .gallery {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 1rem;
-    }
-
-    .footer-content {
-        flex-direction: column;
-        gap: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    body {
-        padding: 15px 0;
-    }
-
-    .header-content {
-        padding: 2rem 1.5rem;
-    }
-
-    .header-title {
-        font-size: 2rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
     }
 
     .upload-card h2 {
         font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+
+    .upload-card > p {
+        font-size: 1rem;
+        margin-bottom: 2rem;
     }
 
     .upload-icon {
         font-size: 3rem;
+        margin-bottom: 1rem;
     }
 
     .file-input-label {
         min-width: auto;
         width: 100%;
         padding: 2rem 1rem;
+        font-size: 1rem;
+    }
+
+    .file-input-label i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .upload-btn {
+        font-size: 1rem;
+        padding: 1rem 2rem;
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .qr-card h3 {
+        font-size: 1.4rem;
+        margin-bottom: 1rem;
+    }
+
+    .qr-container {
+        margin: 1.5rem 0;
+        padding: 1rem;
+    }
+
+    .qr-code {
+        max-width: 180px;
+    }
+
+    .gallery {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .footer {
+        margin-top: 3rem;
+    }
+
+    .footer-content {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1.5rem;
+    }
+
+    /* Toast mesajları mobilde daha iyi görünüm */
+    .message-toast {
+        top: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px 0;
+        font-size: 14px;
+    }
+
+    .container {
+        padding: 0 8px;
+    }
+
+    .header {
+        margin-bottom: 1.5rem;
+    }
+
+    .header-content {
+        padding: 1.5rem 1rem;
+        border-radius: var(--radius-lg);
+    }
+
+    .header-title {
+        font-size: 1.6rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .header-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .header-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .upload-card,
+    .qr-card {
+        padding: 1.2rem;
+        border-radius: var(--radius-lg);
+    }
+
+    .upload-card h2 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .upload-card > p {
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+    }
+
+    .upload-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .file-input-label {
+        padding: 1.5rem 1rem;
+        font-size: 0.9rem;
+        border-radius: var(--radius-md);
+    }
+
+    .file-input-label i {
+        font-size: 2.5rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .file-input-label small {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .upload-btn {
+        font-size: 0.95rem;
+        padding: 0.9rem 1.5rem;
+        width: 100%;
+        margin-bottom: 1.5rem;
+    }
+
+    .qr-card h3 {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+
+    .qr-card p {
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+    }
+
+    .qr-container {
+        margin: 1rem 0;
+        padding: 0.8rem;
+    }
+
+    .qr-code {
+        max-width: 150px;
     }
 
     .gallery {
         grid-template-columns: 1fr;
+        gap: 0.8rem;
     }
 
     .gallery-item-info {
-        padding: 1rem;
+        padding: 0.8rem;
     }
 
     .file-name {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
+        margin-bottom: 0.3rem;
     }
 
     .file-date {
+        font-size: 0.75rem;
+    }
+
+    .footer-content {
+        padding: 1.2rem;
+        font-size: 0.85rem;
+    }
+
+    /* Progress Modal için mobil optimizasyon */
+    .modal-content {
+        padding: 1.5rem;
+        margin: 1rem;
+        max-width: 320px;
+    }
+    
+    .modal-header h3 {
+        font-size: 1.2rem;
+    }
+
+    .modal-header i {
+        font-size: 2.5rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .upload-animation {
+        gap: 0.5rem;
+    }
+    
+    .upload-step i {
+        font-size: 1.2rem;
+    }
+    
+    .upload-step span {
+        font-size: 0.7rem;
+    }
+    
+    .progress-text {
+        font-size: 0.9rem;
+    }
+
+    .progress-message {
         font-size: 0.8rem;
+    }
+}
+
+/* Çok küçük ekranlar (320px ve altı) */
+@media (max-width: 320px) {
+    .container {
+        padding: 0 5px;
+    }
+
+    .header-content {
+        padding: 1rem 0.8rem;
+    }
+
+    .header-title {
+        font-size: 1.4rem;
+    }
+
+    .upload-card,
+    .qr-card {
+        padding: 1rem;
+    }
+
+    .upload-card h2 {
+        font-size: 1.3rem;
+    }
+
+    .file-input-label {
+        padding: 1.2rem 0.8rem;
+    }
+
+    .file-input-label i {
+        font-size: 2rem;
+    }
+
+    .upload-btn {
+        font-size: 0.9rem;
+        padding: 0.8rem 1.2rem;
+    }
+
+    .qr-code {
+        max-width: 120px;
+    }
+
+    .modal-content {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+}
+
+/* Landscape telefon modları */
+@media (max-height: 500px) and (orientation: landscape) {
+    body {
+        padding: 5px 0;
+    }
+
+    .header {
+        margin-bottom: 1rem;
+        padding: 0.5rem 0;
+    }
+
+    .header-content {
+        padding: 1rem;
+    }
+
+    .header-title {
+        font-size: 1.5rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .header-subtitle {
+        font-size: 0.8rem;
+    }
+
+    .upload-card,
+    .qr-card {
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* Touch optimizasyonu */
+@media (pointer: coarse) {
+    .upload-btn,
+    .file-input-label,
+    .social-link {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .file-input-label {
+        padding: 2rem 1rem;
+    }
+
+    .upload-btn {
+        padding: 1rem 2rem;
     }
 }
 
