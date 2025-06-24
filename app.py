@@ -19,20 +19,50 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Google servis hesabı JSON'u environment variable'dan al
-SERVICE_ACCOUNT_JSON = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON')
-FOLDER_ID = os.getenv('GOOGLE_DRIVE_FOLDER_ID', '1r7aJfC8EFUSB69WjcywTtQ4BnjbXXR5c')
-SCOPES = ['https://www.googleapis.com/auth/drive.file']
+# Google servis hesabı JSON'u environment variable'dan al, yoksa dosyadan oku
+SERVICE_ACCOUNT_JSON = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON', '')
+SERVICE_ACCOUNT_FILE = 'service_account.json'
+
+# Eğer environment variable boşsa, dosyadan oku
+if not SERVICE_ACCOUNT_JSON and os.path.exists(SERVICE_ACCOUNT_FILE):
+    try:
+        print(f"Service account dosyası okundu: {os.path.abspath(SERVICE_ACCOUNT_FILE)}")
+        with open(SERVICE_ACCOUNT_FILE, 'r') as f:
+            SERVICE_ACCOUNT_JSON = f.read()
+    except Exception as e:
+        print(f"Service account dosyası okuma hatası: {e}")
+
+# ÖNEMLİ: Aşağıdaki adımları izleyin:
+# 1. Google Drive'da yeni bir klasör oluşturun
+# 2. Klasörü servis hesabı ile paylaşın: dugun-n-san@dugunnn.iam.gserviceaccount.com
+# 3. Klasörün ID'sini aşağıdaki FOLDER_ID değişkenine yazın
+# 4. Uygulamayı yeniden başlatın
+# NOT: Klasör ID'si, klasör URL'sindeki "folders/" sonrasındaki koddur
+# Örnek: https://drive.google.com/drive/folders/BURAYA_YENI_KLASOR_ID_GELECEK?usp=sharing
+FOLDER_ID = os.getenv('GOOGLE_DRIVE_FOLDER_ID', '1IHkzE-ki4tfFFwOZ4i5TLVlD5a_ifkqP')
+# Daha geniş izinler kullanalım
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def get_credentials():
+    """Google Drive API kimlik bilgilerini al"""
     try:
-        if SERVICE_ACCOUNT_JSON:
-            service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
+        # Doğrudan SERVICE_ACCOUNT_JSON değişkeninden al
+        try:
+            json_data = json.loads(SERVICE_ACCOUNT_JSON)
+            print("SERVICE_ACCOUNT_JSON başarıyla ayrıştırıldı")
+            
             credentials = service_account.Credentials.from_service_account_info(
-                service_account_info, scopes=SCOPES)
+                json_data, scopes=SCOPES)
+            print("Credentials başarıyla oluşturuldu!")
             return credentials
+        except json.JSONDecodeError as je:
+            print(f"JSON ayrıştırma hatası: {je}")
+        except Exception as e:
+            print(f"Credentials oluşturma hatası: {e}")
     except Exception as e:
-        print(f"Credentials error: {e}")
+        print(f"Credentials genel hata: {e}")
+    
+    print("Kimlik bilgileri oluşturulamadı!")
     return None
 
 def allowed_file(filename):
@@ -41,20 +71,39 @@ def allowed_file(filename):
 def backup_to_drive(filepath, filename):
     """Dosyayı Drive'a yedekle (opsiyonel)"""
     try:
-        credentials = get_credentials()
-        if not credentials:
+        print(f"Drive'a yedekleme başlatılıyor: {filename}")
+        # Doğrudan SERVICE_ACCOUNT_JSON değişkeninden kimlik bilgilerini al
+        try:
+            json_data = json.loads(SERVICE_ACCOUNT_JSON)
+            print(f"Servis hesabı: {json_data.get('client_email')}")
+            print(f"Klasör ID: {FOLDER_ID}")
+            
+            credentials = service_account.Credentials.from_service_account_info(
+                json_data, scopes=SCOPES)
+            
+            service = build('drive', 'v3', credentials=credentials)
+            
+            # Önce klasörün erişilebilir olup olmadığını kontrol et
+            try:
+                folder_info = service.files().get(fileId=FOLDER_ID, fields='id,name').execute()
+                print(f"Klasör bulundu: {folder_info.get('name', 'Unknown')}")
+            except Exception as e:
+                print(f"Klasör erişim hatası: {e}")
+                return None
+                
+            file_metadata = {
+                'name': filename,
+                'parents': [FOLDER_ID]
+            }
+            media = MediaFileUpload(filepath, resumable=True)
+            file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+            print(f"Drive yedekleme başarılı: {filename} -> {file.get('id')}")
+            return file.get('id')
+        except Exception as e:
+            print(f"Drive yedekleme hatası (kimlik bilgileri): {e}")
             return None
-        
-        service = build('drive', 'v3', credentials=credentials)
-        file_metadata = {
-            'name': filename,
-            'parents': [FOLDER_ID]
-        }
-        media = MediaFileUpload(filepath, resumable=True)
-        file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-        return file.get('id')
     except Exception as e:
-        print(f"Drive backup error: {e}")
+        print(f"Drive backup genel hata: {e}")
         return None
 
 @app.route('/')
@@ -96,11 +145,19 @@ def uploaded_file(filename):
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     try:
+        print("\n--- UPLOAD BAŞLATILIYOR ---")
+        print(f"Request files: {request.files}")
+        print(f"Request form: {request.form}")
+        
         if 'file' not in request.files:
+            print("Hata: 'file' anahtarı bulunamadı")
             return jsonify({'error': 'Dosya bulunamadı'}), 400
         
         file = request.files['file']
+        print(f"Dosya adı: {file.filename}")
+        
         if file.filename == '':
+            print("Hata: Dosya adı boş")
             return jsonify({'error': 'Dosya seçilmedi'}), 400
         
         if file and allowed_file(file.filename):
@@ -111,23 +168,32 @@ def upload_file():
             unique_filename = f"{name}_{timestamp}{ext}"
             
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            print(f"Dosya kaydediliyor: {filepath}")
             file.save(filepath)
+            print(f"Dosya başarıyla kaydedildi: {filepath}")
             
             # Drive'a yedekleme (opsiyonel - hata olursa da devam eder)
+            print(f"Drive'a yedekleme başlatılıyor...")
             drive_id = backup_to_drive(filepath, unique_filename)
             drive_status = "backed_up" if drive_id else "local_only"
+            print(f"Drive yedekleme durumu: {drive_status}, Drive ID: {drive_id}")
             
-            return jsonify({
+            result = {
                 'success': True, 
                 'filename': unique_filename,
                 'url': url_for('uploaded_file', filename=unique_filename, _external=True),
                 'drive_id': drive_id,
                 'drive_status': drive_status
-            }), 200
+            }
+            print(f"Başarılı sonuç: {result}")
+            print("--- UPLOAD TAMAMLANDI ---\n")
+            return jsonify(result), 200
         else:
+            print(f"Hata: Geçersiz dosya formatı. Dosya: {file.filename}")
             return jsonify({'error': 'Geçersiz dosya formatı. Desteklenen: JPG, PNG, GIF, MP4, MOV, AVI'}), 400
     
     except Exception as e:
+        print(f"Upload genel hata: {e}")
         return jsonify({'error': f'Sunucu hatası: {str(e)}'}), 500
 
 @app.route('/api/gallery', methods=['GET'])
@@ -215,28 +281,52 @@ def stats():
 def debug_info():
     """Debug bilgileri - Drive bağlantısı test"""
     try:
+        print("\n--- DEBUG BAŞLATILIYOR ---")
         # Credentials test
         credentials = get_credentials()
         has_credentials = credentials is not None
+        print(f"Kimlik bilgileri oluşturuldu: {has_credentials}")
         
         # Drive bağlantı testi
         drive_test_result = None
         if credentials:
             try:
+                print(f"Drive API bağlantısı kuruluyor...")
                 service = build('drive', 'v3', credentials=credentials)
+                
+                # Önce dosya listesini kontrol et
+                print(f"Dosya listesi alınıyor...")
+                results = service.files().list(
+                    pageSize=5,
+                    fields="nextPageToken, files(id, name)"
+                ).execute()
+                files = results.get('files', [])
+                print(f"Erişilebilir dosya sayısı: {len(files)}")
+                
                 # Klasör erişim testi
-                folder_info = service.files().get(fileId=FOLDER_ID, fields='id,name,permissions').execute()
-                drive_test_result = {
-                    'folder_accessible': True,
-                    'folder_name': folder_info.get('name', 'Unknown'),
-                    'folder_id': folder_info.get('id')
-                }
+                print(f"Klasör erişimi test ediliyor: {FOLDER_ID}")
+                try:
+                    folder_info = service.files().get(fileId=FOLDER_ID, fields='id,name,permissions').execute()
+                    drive_test_result = {
+                        'folder_accessible': True,
+                        'folder_name': folder_info.get('name', 'Unknown'),
+                        'folder_id': folder_info.get('id')
+                    }
+                    print(f"Drive bağlantısı başarılı! Klasör adı: {folder_info.get('name', 'Unknown')}")
+                except Exception as e:
+                    drive_test_result = {
+                        'folder_accessible': False,
+                        'error': str(e)
+                    }
+                    print(f"Drive klasör erişim hatası: {e}")
             except Exception as e:
                 drive_test_result = {
-                    'folder_accessible': False,
+                    'api_accessible': False,
                     'error': str(e)
                 }
+                print(f"Drive API genel hata: {e}")
         
+        print("--- DEBUG TAMAMLANDI ---\n")
         return jsonify({
             'success': True,
             'debug_info': {
@@ -250,6 +340,7 @@ def debug_info():
         })
     
     except Exception as e:
+        print(f"Debug genel hata: {e}")
         return jsonify({'success': False, 'error': str(e), 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')})
 
 if __name__ == '__main__':
