@@ -1,13 +1,13 @@
-// 📸 iOS Uyumlu Düğün Fotoğraf Sistemi - Multiple File Support
+// 📸 Gelişmiş Thumbnail Preview Düğün Fotoğraf Sistemi
 var API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
 var selectedFiles = [];
 var isUploading = false;
 var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-// Sistem başlatma - iOS uyumlu
+// Sistem başlatma
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('📱 iOS Uyumlu Sistem başlatılıyor...');
+    console.log('📱 Gelişmiş Thumbnail Sistem başlatılıyor...');
     console.log('🔍 Platform:', isIOS ? 'iOS' : isMobile ? 'Mobile' : 'Desktop');
 
     setTimeout(function () {
@@ -21,8 +21,9 @@ function initializeSystem() {
         var fileInput = document.getElementById('fileInput');
         var uploadForm = document.getElementById('uploadForm');
         var uploadBtn = document.querySelector('.upload-btn');
+        var previewContainer = document.getElementById('previewContainer');
 
-        if (!fileInput || !uploadForm || !uploadBtn) {
+        if (!fileInput || !uploadForm || !uploadBtn || !previewContainer) {
             console.error('❌ Temel elementler bulunamadı!');
             return;
         }
@@ -30,8 +31,8 @@ function initializeSystem() {
         // Loading screen'i gizle
         hideLoadingScreen();
 
-        // iOS özel ayarları
-        setupIOSFileInput();
+        // File input sistemini başlat
+        setupFileInput();
 
         // Form submit
         uploadForm.addEventListener('submit', handleUpload);
@@ -39,11 +40,8 @@ function initializeSystem() {
         // Backend test et
         testBackend();
 
-        console.log('✅ Sistem hazır!');
-        var message = isIOS ?
-            '📱 iOS sistem hazır! Fotoğraflarınızı seçin.' :
-            '📱 Sistem hazır! Fotoğraflarınızı seçin.';
-        showMessage(message, 'success');
+        console.log('✅ Gelişmiş sistem hazır!');
+        showMessage('📱 Sistem hazır! Fotoğraflarınızı seçmeye başlayın.', 'success');
 
     } catch (error) {
         console.error('❌ Sistem başlatma hatası:', error);
@@ -58,45 +56,41 @@ function hideLoadingScreen() {
     }
 }
 
-function setupIOSFileInput() {
+function setupFileInput() {
     var fileInput = document.getElementById('fileInput');
     var label = document.querySelector('.file-input-label');
 
     if (!fileInput || !label) return;
 
-    // iOS için özel multiple ayarları
-    if (isIOS) {
-        // iOS'da multiple attribute bazen sorun çıkarır, önce test edelim
-        fileInput.setAttribute('multiple', 'multiple');
-        fileInput.setAttribute('accept', 'image/*,video/*');
+    // Multiple file selection - her zaman aktif
+    fileInput.setAttribute('multiple', 'multiple');
+    fileInput.setAttribute('accept', 'image/*,video/*');
 
-        // iOS için özel style ayarları
+    // iOS için özel style ayarları
+    if (isIOS) {
         fileInput.style.position = 'absolute';
         fileInput.style.left = '-9999px';
         fileInput.style.opacity = '0';
         fileInput.style.pointerEvents = 'none';
-
         console.log('📱 iOS file input ayarlandı');
-    } else {
-        // Diğer platformlar için normal ayar
-        fileInput.setAttribute('multiple', 'multiple');
-        fileInput.setAttribute('accept', 'image/*,video/*');
     }
 
-    // File input change - iOS uyumlu
+    // File input change - thumbnail sistemi
     fileInput.addEventListener('change', function (e) {
-        console.log('📁 File input change triggered:', e.target.files.length, 'files');
+        console.log('📁 File input change triggered:', e.target.files ? e.target.files.length : 0, 'files');
 
-        // iOS'da bazen files null olabiliyor
         if (!e.target.files || e.target.files.length === 0) {
             console.warn('⚠️ Dosya seçimi boş');
             return;
         }
 
-        handleMultipleFileSelection(e.target.files);
+        addNewFiles(e.target.files);
+
+        // Input'u temizle ki aynı dosyalar tekrar seçilebilsin
+        e.target.value = '';
     });
 
-    // Label click - iOS uyumlu
+    // Label click - dosya eklemek için
     label.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -107,31 +101,10 @@ function setupIOSFileInput() {
         }
 
         console.log('🖱️ Label clicked - opening file picker');
-
-        // iOS için özel file picker açma
-        if (isIOS) {
-            // iOS'da input'u görünür yap, click et, sonra gizle
-            fileInput.style.position = 'static';
-            fileInput.style.left = 'auto';
-            fileInput.style.opacity = '1';
-            fileInput.style.pointerEvents = 'auto';
-
-            setTimeout(function () {
-                fileInput.click();
-
-                setTimeout(function () {
-                    fileInput.style.position = 'absolute';
-                    fileInput.style.left = '-9999px';
-                    fileInput.style.opacity = '0';
-                    fileInput.style.pointerEvents = 'none';
-                }, 100);
-            }, 50);
-        } else {
-            fileInput.click();
-        }
+        triggerFileInput();
     });
 
-    // Touch events için iOS optimizasyonu
+    // Touch events için optimizasyon
     if (isIOS || isMobile) {
         label.addEventListener('touchstart', function (e) {
             e.preventDefault();
@@ -142,21 +115,42 @@ function setupIOSFileInput() {
             e.preventDefault();
             label.style.transform = 'scale(1)';
 
-            // Touch sonrası click trigger
             setTimeout(function () {
                 if (!isUploading) {
-                    var clickEvent = new Event('click', { bubbles: true });
-                    label.dispatchEvent(clickEvent);
+                    triggerFileInput();
                 }
             }, 100);
         });
     }
 
-    // Drag & Drop - mobile'da disable
+    // Drag & Drop - sadece desktop'ta
     if (!isMobile) {
         setupDragDrop(label);
+    }
+}
+
+function triggerFileInput() {
+    var fileInput = document.getElementById('fileInput');
+
+    if (isIOS) {
+        // iOS'da özel file picker açma
+        fileInput.style.position = 'static';
+        fileInput.style.left = 'auto';
+        fileInput.style.opacity = '1';
+        fileInput.style.pointerEvents = 'auto';
+
+        setTimeout(function () {
+            fileInput.click();
+
+            setTimeout(function () {
+                fileInput.style.position = 'absolute';
+                fileInput.style.left = '-9999px';
+                fileInput.style.opacity = '0';
+                fileInput.style.pointerEvents = 'none';
+            }, 100);
+        }, 50);
     } else {
-        console.log('📱 Mobile detected - drag&drop disabled');
+        fileInput.click();
     }
 }
 
@@ -180,69 +174,81 @@ function setupDragDrop(label) {
 
         var files = e.dataTransfer.files;
         if (files && files.length > 0) {
-            handleMultipleFileSelection(files);
+            addNewFiles(files);
         }
     });
 }
 
-function handleMultipleFileSelection(files) {
-    if (!files || files.length === 0) {
-        console.log('❌ Dosya seçilmedi');
-        showMessage('❌ Dosya seçilmedi', 'error');
-        return;
-    }
+function addNewFiles(files) {
+    console.log('📁 ' + files.length + ' yeni dosya ekleniyor...');
 
-    console.log('📁 ' + files.length + ' dosya seçildi');
-
-    // iOS'da FileList'i Array'e çevir
+    // FileList'i Array'e çevir
     var fileArray = [];
     for (var i = 0; i < files.length; i++) {
         fileArray.push(files[i]);
     }
 
-    // Mevcut seçimi temizle
-    selectedFiles = [];
-
-    // Her dosyayı kontrol et ve ekle
-    var validFiles = [];
+    var addedCount = 0;
+    var duplicateCount = 0;
     var invalidCount = 0;
 
     for (var j = 0; j < fileArray.length; j++) {
         var file = fileArray[j];
-        console.log('🔍 Kontrol ediliyor:', file.name, file.type, file.size);
 
-        if (validateFile(file)) {
-            validFiles.push(file);
-            console.log('✅ Geçerli:', file.name);
-        } else {
+        // Duplicate kontrolü
+        if (isFileAlreadySelected(file)) {
+            duplicateCount++;
+            console.warn('⚠️ Dosya zaten seçilmiş:', file.name);
+            continue;
+        }
+
+        // Dosya geçerliliği kontrolü
+        if (!validateFile(file)) {
             invalidCount++;
-            console.log('❌ Geçersiz:', file.name);
+            console.warn('❌ Geçersiz dosya:', file.name);
+            continue;
         }
+
+        // Benzersiz ID oluştur
+        file.uniqueId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+        // Dosyayı ekle
+        selectedFiles.push(file);
+        addedCount++;
+
+        // Thumbnail oluştur
+        createThumbnail(file);
+
+        console.log('✅ Dosya eklendi:', file.name);
     }
 
-    // Geçerli dosyaları sakla
-    selectedFiles = validFiles;
-
-    if (selectedFiles.length > 0) {
-        // UI'yi güncelle
-        updateMultipleFileLabel();
-        enableUploadButton();
-
-        var message = '✅ ' + selectedFiles.length + ' dosya seçildi!';
-        if (invalidCount > 0) {
-            message += ' (' + invalidCount + ' dosya geçersiz)';
-        }
-
-        // iOS için özel mesaj
-        if (isIOS && selectedFiles.length === 1) {
-            message = '✅ ' + selectedFiles[0].name + ' seçildi!';
-        }
-
+    // Sonuç mesajı
+    var message = '';
+    if (addedCount > 0) {
+        message = '✅ ' + addedCount + ' dosya eklendi!';
+        if (duplicateCount > 0) message += ' (' + duplicateCount + ' duplicate atlandı)';
+        if (invalidCount > 0) message += ' (' + invalidCount + ' geçersiz atlandı)';
         showMessage(message, 'success');
-    } else {
-        showMessage('❌ Hiç geçerli dosya seçilmedi!', 'error');
-        resetForm();
+    } else if (duplicateCount > 0) {
+        showMessage('⚠️ Seçilen dosyalar zaten eklenmiş!', 'warning');
+    } else if (invalidCount > 0) {
+        showMessage('❌ Seçilen dosyalar geçersiz format!', 'error');
     }
+
+    // UI'yi güncelle
+    updateUI();
+}
+
+function isFileAlreadySelected(newFile) {
+    for (var i = 0; i < selectedFiles.length; i++) {
+        var existingFile = selectedFiles[i];
+        if (existingFile.name === newFile.name &&
+            existingFile.size === newFile.size &&
+            existingFile.lastModified === newFile.lastModified) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function validateFile(file) {
@@ -259,7 +265,7 @@ function validateFile(file) {
         return false;
     }
 
-    // Tip kontrolü - iOS uyumlu
+    // Format kontrolü
     var fileName = file.name.toLowerCase();
     var validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.mp4', '.mov', '.avi'];
     var isValidExtension = false;
@@ -271,7 +277,7 @@ function validateFile(file) {
         }
     }
 
-    // MIME type kontrolü - iOS'da daha önemli
+    // MIME type kontrolü
     var isValidMime = false;
     if (file.type) {
         var validMimeTypes = ['image/', 'video/'];
@@ -288,61 +294,147 @@ function validateFile(file) {
         isValidMime = true;
     }
 
-    var isValid = isValidExtension || isValidMime;
-
-    if (!isValid) {
-        console.warn('❌ Geçersiz format:', file.name, 'Type:', file.type);
-        return false;
-    }
-
-    console.log('✅ Dosya geçerli:', file.name, 'Type:', file.type, 'Size:', file.size);
-    return true;
+    return isValidExtension || isValidMime;
 }
 
-function updateMultipleFileLabel() {
-    var label = document.querySelector('.file-input-label span');
-    if (label && selectedFiles.length > 0) {
-        if (selectedFiles.length === 1) {
-            var fileSize = (selectedFiles[0].size / 1024 / 1024).toFixed(1);
-            var fileName = selectedFiles[0].name;
+function createThumbnail(file) {
+    var previewContainer = document.getElementById('previewContainer');
+    if (!previewContainer) return;
 
-            // iOS'da uzun isimler için kısaltma
-            if (isIOS && fileName.length > 20) {
-                fileName = fileName.substring(0, 15) + '...' + fileName.substring(fileName.lastIndexOf('.'));
+    // Thumbnail container oluştur
+    var thumbnailDiv = document.createElement('div');
+    thumbnailDiv.className = 'thumbnail-item';
+    thumbnailDiv.setAttribute('data-file-id', file.uniqueId);
+
+    var fileSize = (file.size / 1024 / 1024).toFixed(1);
+    var fileName = file.name;
+
+    // Uzun dosya adlarını kısalt
+    if (fileName.length > 15) {
+        var ext = fileName.substring(fileName.lastIndexOf('.'));
+        fileName = fileName.substring(0, 12) + '...' + ext;
+    }
+
+    // Dosya tipine göre thumbnail
+    if (file.type.startsWith('image/') || file.name.toLowerCase().match(/\.(heic|heif)$/)) {
+        // Resim thumbnail'i
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            thumbnailDiv.innerHTML =
+                '<div class="thumbnail-image">' +
+                '<img src="' + e.target.result + '" alt="' + file.name + '">' +
+                '<button class="remove-btn" onclick="removeFile(\'' + file.uniqueId + '\')">' +
+                '<i class="fas fa-times"></i>' +
+                '</button>' +
+                '</div>' +
+                '<div class="thumbnail-info">' +
+                '<div class="file-name" title="' + file.name + '">' + fileName + '</div>' +
+                '<div class="file-size">' + fileSize + ' MB</div>' +
+                '</div>';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        // Video thumbnail'i
+        thumbnailDiv.innerHTML =
+            '<div class="thumbnail-image video-thumbnail">' +
+            '<i class="fas fa-play-circle"></i>' +
+            '<div class="video-overlay">VIDEO</div>' +
+            '<button class="remove-btn" onclick="removeFile(\'' + file.uniqueId + '\')">' +
+            '<i class="fas fa-times"></i>' +
+            '</button>' +
+            '</div>' +
+            '<div class="thumbnail-info">' +
+            '<div class="file-name" title="' + file.name + '">' + fileName + '</div>' +
+            '<div class="file-size">' + fileSize + ' MB</div>' +
+            '</div>';
+    }
+
+    // Container'a ekle
+    previewContainer.appendChild(thumbnailDiv);
+
+    // Animate in
+    setTimeout(function () {
+        thumbnailDiv.classList.add('animate-in');
+    }, 50);
+}
+
+function removeFile(fileId) {
+    console.log('🗑️ Dosya kaldırılıyor:', fileId);
+
+    // Array'den kaldır
+    selectedFiles = selectedFiles.filter(function (file) {
+        return file.uniqueId !== fileId;
+    });
+
+    // DOM'dan kaldır
+    var thumbnailElement = document.querySelector('[data-file-id="' + fileId + '"]');
+    if (thumbnailElement) {
+        thumbnailElement.classList.add('animate-out');
+        setTimeout(function () {
+            if (thumbnailElement.parentNode) {
+                thumbnailElement.parentNode.removeChild(thumbnailElement);
             }
-
-            label.textContent = '✓ ' + fileName + ' (' + fileSize + ' MB)';
-        } else {
-            var totalSize = 0;
-            for (var i = 0; i < selectedFiles.length; i++) {
-                totalSize += selectedFiles[i].size;
-            }
-            var totalSizeMB = (totalSize / 1024 / 1024).toFixed(1);
-            label.textContent = '✓ ' + selectedFiles.length + ' dosya seçildi (' + totalSizeMB + ' MB)';
-        }
-        label.parentElement.classList.add('file-selected');
+        }, 300);
     }
+
+    // UI'yi güncelle
+    updateUI();
+
+    showMessage('🗑️ Dosya kaldırıldı', 'info');
 }
 
-function enableUploadButton() {
-    var btn = document.querySelector('.upload-btn');
-    if (btn) {
-        btn.disabled = false;
-        if (selectedFiles.length === 1) {
-            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Fotoğrafı Yükle';
-        } else {
-            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> ' + selectedFiles.length + ' Dosyayı Yükle';
-        }
-        btn.style.opacity = '1';
-    }
-}
+function updateUI() {
+    var previewContainer = document.getElementById('previewContainer');
+    var fileStats = document.getElementById('fileStats');
+    var fileCountElement = document.getElementById('fileCount');
+    var totalSizeElement = document.getElementById('totalSize');
+    var uploadBtn = document.querySelector('.upload-btn');
 
-function disableUploadButton(text) {
-    var btn = document.querySelector('.upload-btn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = text || '<i class="fas fa-exclamation-triangle"></i> Bekleyin...';
-        btn.style.opacity = '0.7';
+    // Dosya sayısı ve toplam boyut hesapla
+    var totalSize = 0;
+    for (var i = 0; i < selectedFiles.length; i++) {
+        totalSize += selectedFiles[i].size;
+    }
+    var totalSizeMB = (totalSize / 1024 / 1024).toFixed(1);
+
+    // Bilgileri güncelle
+    if (fileCountElement) {
+        fileCountElement.textContent = selectedFiles.length;
+    }
+
+    if (totalSizeElement) {
+        totalSizeElement.textContent = totalSizeMB + ' MB';
+    }
+
+    // File stats'ı göster/gizle
+    if (fileStats) {
+        if (selectedFiles.length > 0) {
+            fileStats.style.display = 'flex';
+        } else {
+            fileStats.style.display = 'none';
+        }
+    }
+
+    // Preview container'ı göster/gizle
+    if (previewContainer) {
+        if (selectedFiles.length > 0) {
+            previewContainer.style.display = 'block';
+        } else {
+            previewContainer.style.display = 'none';
+        }
+    }
+
+    // Upload butonunu aktif/pasif yap
+    if (uploadBtn) {
+        if (selectedFiles.length > 0) {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> ' + selectedFiles.length + ' Dosyayı Yükle';
+            uploadBtn.style.opacity = '1';
+        } else {
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Önce dosya seçin';
+            uploadBtn.style.opacity = '0.6';
+        }
     }
 }
 
@@ -351,7 +443,7 @@ function testBackend() {
 
     var xhr = new XMLHttpRequest();
     xhr.open('GET', API_BASE_URL + '/', true);
-    xhr.timeout = 10000; // 10 saniye
+    xhr.timeout = 10000;
 
     xhr.onload = function () {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -386,17 +478,12 @@ function handleUpload(event) {
 
     if (!selectedFiles || selectedFiles.length === 0) {
         showMessage('📁 Önce dosya seçin!', 'error');
+        return;
+    }
 
-        // iOS'da file picker'ı tekrar aç
-        if (isIOS) {
-            setTimeout(function () {
-                var label = document.querySelector('.file-input-label');
-                if (label) {
-                    var clickEvent = new Event('click', { bubbles: true });
-                    label.dispatchEvent(clickEvent);
-                }
-            }, 1000);
-        }
+    // Upload onayı al
+    var confirmMessage = selectedFiles.length + ' dosyayı yüklemek istediğinizden emin misiniz?';
+    if (!confirm(confirmMessage)) {
         return;
     }
 
@@ -410,7 +497,7 @@ function startMultipleUpload() {
     console.log('🚀 ' + selectedFiles.length + ' dosya yüklenmeye başlıyor...');
 
     // UI'yi güncelle
-    disableUploadButton('<i class="fas fa-spinner fa-spin"></i> Yükleniyor...');
+    disableUploadButton();
     showProgressModal();
     updateProgress(0, 'Yükleme başlatılıyor...');
 
@@ -418,9 +505,17 @@ function startMultipleUpload() {
     uploadFilesSequentially(0, [], []);
 }
 
+function disableUploadButton() {
+    var btn = document.querySelector('.upload-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
+        btn.style.opacity = '0.7';
+    }
+}
+
 function uploadFilesSequentially(currentIndex, successFiles, errorFiles) {
     if (currentIndex >= selectedFiles.length) {
-        // Tüm dosyalar işlendi
         handleAllUploadsComplete(successFiles, errorFiles);
         return;
     }
@@ -430,7 +525,7 @@ function uploadFilesSequentially(currentIndex, successFiles, errorFiles) {
 
     updateProgress(progress, (currentIndex + 1) + '/' + selectedFiles.length + ': ' + currentFile.name);
 
-    // FormData hazırla - iOS uyumlu
+    // FormData hazırla
     var formData = new FormData();
     formData.append('file', currentFile);
 
@@ -439,7 +534,6 @@ function uploadFilesSequentially(currentIndex, successFiles, errorFiles) {
     // XMLHttpRequest ile upload
     var xhr = new XMLHttpRequest();
 
-    // Success handler
     xhr.addEventListener('load', function () {
         if (xhr.status === 200) {
             try {
@@ -464,36 +558,28 @@ function uploadFilesSequentially(currentIndex, successFiles, errorFiles) {
             console.error('❌ HTTP hatası:', currentFile.name, xhr.status);
         }
 
-        // Sonraki dosyaya geç
         uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
     });
 
-    // Error handler
     xhr.addEventListener('error', function () {
         errorFiles.push({
             file: currentFile,
             error: 'İnternet bağlantısı hatası'
         });
         console.error('❌ Network hatası:', currentFile.name);
-
-        // Sonraki dosyaya geç
         uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
     });
 
-    // Timeout handler - iOS için daha uzun
-    xhr.timeout = isIOS ? 600000 : 300000; // iOS: 10 dakika, Diğer: 5 dakika
+    xhr.timeout = isIOS ? 600000 : 300000;
     xhr.addEventListener('timeout', function () {
         errorFiles.push({
             file: currentFile,
             error: 'Yükleme çok uzun sürdü'
         });
         console.error('❌ Timeout:', currentFile.name);
-
-        // Sonraki dosyaya geç
         uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
     });
 
-    // Send request
     xhr.open('POST', API_BASE_URL + '/api/upload');
     xhr.send(formData);
 }
@@ -508,62 +594,42 @@ function handleAllUploadsComplete(successFiles, errorFiles) {
 
         var message = '';
         if (successFiles.length > 0 && errorFiles.length === 0) {
-            // Tümü başarılı
             message = '✅ ' + successFiles.length + ' dosya başarıyla yüklendi!';
             showMessage(message, 'success');
+
+            // Başarılı yükleme sonrası seçimi temizle
+            clearAllFiles();
         } else if (successFiles.length > 0 && errorFiles.length > 0) {
-            // Kısmen başarılı
             message = '⚠️ ' + successFiles.length + ' dosya yüklendi, ' + errorFiles.length + ' dosyada hata oluştu.';
             showMessage(message, 'warning');
+
+            // Başarılı olanları listeden kaldır
+            removeSuccessfulFiles(successFiles);
         } else {
-            // Hepsi başarısız
             message = '❌ Hiçbir dosya yüklenemedi! (' + errorFiles.length + ' hata)';
             showMessage(message, 'error');
         }
 
-        // Detaylı sonuç göster
-        if (errorFiles.length > 0) {
-            setTimeout(function () {
-                var errorDetails = 'Hatalı dosyalar:\n';
-                for (var i = 0; i < Math.min(errorFiles.length, 3); i++) {
-                    errorDetails += '• ' + errorFiles[i].file.name + ': ' + errorFiles[i].error + '\n';
-                }
-                if (errorFiles.length > 3) {
-                    errorDetails += '... ve ' + (errorFiles.length - 3) + ' dosya daha';
-                }
-                showMessage(errorDetails, 'error');
-            }, 3000);
-        }
-
-        // Formu temizle
-        resetForm();
+        isUploading = false;
+        updateUI();
 
     }, 2000);
 }
 
-function resetForm() {
-    // Global state temizle
+function removeSuccessfulFiles(successFiles) {
+    for (var i = 0; i < successFiles.length; i++) {
+        var successFileId = successFiles[i].file.uniqueId;
+        removeFile(successFileId);
+    }
+}
+
+function clearAllFiles() {
     selectedFiles = [];
-    isUploading = false;
-
-    // File input temizle
-    var fileInput = document.getElementById('fileInput');
-    if (fileInput) {
-        fileInput.value = '';
+    var previewContainer = document.getElementById('previewContainer');
+    if (previewContainer) {
+        previewContainer.innerHTML = '';
     }
-
-    // Label'i sıfırla
-    var label = document.querySelector('.file-input-label span');
-    if (label) {
-        var labelText = isIOS ?
-            'Fotoğraf veya video seçin' :
-            'Fotoğraf veya video seçin (Birden fazla seçebilirsiniz)';
-        label.textContent = labelText;
-        label.parentElement.classList.remove('file-selected');
-    }
-
-    // Button'u sıfırla
-    disableUploadButton('<i class="fas fa-cloud-upload-alt"></i> Önce dosya seçin');
+    updateUI();
 }
 
 // Progress Modal Functions
@@ -624,13 +690,11 @@ function hideProgressModal() {
 function showMessage(text, type) {
     type = type || 'info';
 
-    // Eski mesajı kaldır
     var existing = document.querySelector('.message-toast');
     if (existing && existing.parentNode) {
         existing.parentNode.removeChild(existing);
     }
 
-    // Yeni mesaj oluştur
     var toast = document.createElement('div');
     toast.className = 'message-toast ' + type;
     toast.innerHTML =
@@ -641,7 +705,6 @@ function showMessage(text, type) {
 
     document.body.appendChild(toast);
 
-    // Otomatik kaldır
     setTimeout(function () {
         if (toast && toast.parentNode) {
             toast.parentNode.removeChild(toast);
@@ -659,4 +722,4 @@ function getMessageIcon(type) {
     return icons[type] || 'info-circle';
 }
 
-console.log('✅ iOS Uyumlu Multiple File Upload Düğün Sistemi yüklendi!'); 
+console.log('✅ Gelişmiş Thumbnail Preview Düğün Sistemi yüklendi!'); 

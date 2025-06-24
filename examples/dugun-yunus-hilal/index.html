@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=9.2.0">
+    <link rel="stylesheet" href="style.css?v=10.0.0">
 
     <style>
         /* Critical CSS for immediate loading */
@@ -92,10 +92,33 @@
                         <input type="file" id="fileInput" name="file" style="display: none !important;"
                             accept="image/*,video/*">
                         <label for="fileInput" class="file-input-label">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <span>Fotoğraf veya video seçin</span>
-                            <p>Dosyaları buraya sürükleyin veya tıklayın</p>
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Fotoğraf Ekle</span>
+                            <p>Tıklayın veya sürükleyip bırakın</p>
                         </label>
+                    </div>
+
+                    <!-- File Statistics -->
+                    <div class="file-stats" id="fileStats" style="display: none;">
+                        <div class="stat-item">
+                            <i class="fas fa-images"></i>
+                            <span><strong id="fileCount">0</strong> dosya</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-weight-hanging"></i>
+                            <span><strong id="totalSize">0 MB</strong> toplam</span>
+                        </div>
+                        <div class="stat-item">
+                            <button type="button" class="clear-all-btn" onclick="clearAllFiles()">
+                                <i class="fas fa-trash-alt"></i>
+                                Tümünü Temizle
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Preview Container -->
+                    <div class="preview-section" id="previewContainer" style="display: none;">
+                        <!-- Thumbnails will be added here dynamically -->
                     </div>
 
                     <button type="submit" class="upload-btn" disabled>
@@ -135,7 +158,7 @@
     </div>
 
     <!-- Scripts -->
-    <script defer src="script.js?v=9.2.0"></script>
+    <script defer src="script.js?v=10.0.0"></script>
 
     <!-- Error Handling -->
     <script>
