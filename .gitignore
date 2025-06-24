@@ -27,4 +27,21 @@ Thumbs.db
 *.log
 
 # Upload directories
-uploads/ 
+uploads/
+
+# Optional scripts with external dependencies
+scripts/
+docs/
+admin/
+
+# Test files
+test_*.txt
+test_*.jpg
+test_*.html
+
+# Development files
+DEGISTIRILECEK_YERLER.md
+DEPLOYMENT_REHBERI.md
+GITHUB_YUKLEME_REHBERI.md
+SISTEM_OZETI.md
+YENİ_DUGUN_REHBERI.md 
