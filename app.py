@@ -244,6 +244,63 @@ def gallery():
     except Exception as e:
         return jsonify({'success': False, 'error': f'Galeri yüklenemedi: {str(e)}'}), 500
 
+@app.route('/api/drive-gallery', methods=['GET'])
+def drive_gallery():
+    """Google Drive'daki dosyaları listele"""
+    try:
+        print("\n--- DRIVE GALERİ BAŞLATILIYOR ---")
+        credentials = get_credentials()
+        
+        if not credentials:
+            print("Drive kimlik bilgileri bulunamadı")
+            return jsonify({'success': False, 'error': 'Drive kimlik bilgileri bulunamadı'}), 400
+        
+        print("Drive servisi kuruluyor...")
+        service = build('drive', 'v3', credentials=credentials)
+        
+        # Klasördeki dosyaları listele
+        print(f"Klasör dosyaları alınıyor: {FOLDER_ID}")
+        results = service.files().list(
+            q=f"parents in '{FOLDER_ID}' and (mimeType contains 'image/' or mimeType contains 'video/')",
+            pageSize=100,
+            fields="nextPageToken, files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, iconLink, webContentLink)"
+        ).execute()
+        
+        drive_files = results.get('files', [])
+        print(f"Drive'da {len(drive_files)} dosya bulundu")
+        
+        # Dosyaları dönüştür
+        formatted_files = []
+        for file in drive_files:
+            formatted_files.append({
+                'id': file.get('id'),
+                'name': file.get('name'),
+                'mimeType': file.get('mimeType'),
+                'size': int(file.get('size', 0)) if file.get('size') else 0,
+                'createdTime': file.get('createdTime'),
+                'thumbnailLink': file.get('thumbnailLink'),
+                'webViewLink': file.get('webViewLink'),
+                'iconLink': file.get('iconLink'),
+                'downloadUrl': file.get('webContentLink')
+            })
+        
+        # Dosyaları tarihe göre sırala (en yeni önce)
+        formatted_files.sort(key=lambda x: x.get('createdTime', ''), reverse=True)
+        
+        print(f"Drive galeri başarıyla hazırlandı: {len(formatted_files)} dosya")
+        print("--- DRIVE GALERİ TAMAMLANDI ---\n")
+        
+        return jsonify({
+            'success': True, 
+            'files': formatted_files, 
+            'count': len(formatted_files), 
+            'source': 'google_drive'
+        })
+    
+    except Exception as e:
+        print(f"Drive galeri hatası: {e}")
+        return jsonify({'success': False, 'error': f'Drive galeri yüklenemedi: {str(e)}'}), 500
+
 @app.route('/api/stats', methods=['GET'])
 def stats():
     """Site istatistikleri"""
