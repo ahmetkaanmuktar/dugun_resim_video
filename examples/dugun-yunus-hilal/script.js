@@ -1,8 +1,8 @@
-// 📸 Modern Düğün Fotoğraf Sistemi - Google Drive Entegrasyonu
-const API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
-const GALLERY_API_KEY = 'Bearer dugun-gallery-key-2024';
-let OFFLINE_MODE = false;
-let isUploading = false;
+// 📸 Modern Düğün Fotoğraf Sistemi - Çapraz Platform Uyumlu
+var API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
+var GALLERY_API_KEY = 'Bearer dugun-gallery-key-2024';
+var OFFLINE_MODE = false;
+var isUploading = false;
 
 console.log('🎉 Modern Düğün Fotoğraf Sistemi başlatılıyor...');
 
@@ -13,27 +13,37 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Sistem başlatma
-async function initializeSystem() {
+function initializeSystem() {
     try {
         showMessage('🔄 Sistem hazırlanıyor...', 'info');
         
         // Backend bağlantısını test et
-        await testBackend();
-        
-        // Form ve galeriyi hazırla
-        setupUploadForm();
-        setupDragAndDrop();
-        
-        // Galeriyi gizle - sadece yükleme özelliği aktif
-        hideGallerySection();
-        
-        showMessage('✅ Sistem hazır! Fotoğraflarınızı yükleyebilirsiniz.', 'success');
+        testBackend()
+            .then(function() {
+                // Form ve galeriyi hazırla
+                setupUploadForm();
+                setupDragAndDrop();
+                
+                // Galeriyi gizle - sadece yükleme özelliği aktif
+                hideGallerySection();
+                
+                showMessage('✅ Sistem hazır! Fotoğraflarınızı yükleyebilirsiniz.', 'success');
+            })
+            .catch(function(error) {
+                console.error('❌ Backend hatası:', error);
+                showMessage('⚠️ Sistem başlatılırken hata oluştu.', 'error');
+                
+                // Offline mode'da da çalışabilir
+                setupUploadForm();
+                setupDragAndDrop();
+                hideGallerySection();
+            });
         
     } catch (error) {
         console.error('❌ Sistem başlatma hatası:', error);
         showMessage('⚠️ Sistem başlatılırken hata oluştu.', 'error');
         
-        // Offline mode'da da çalışabilir
+        // Fallback - temel form çalışması
         setupUploadForm();
         setupDragAndDrop();
         hideGallerySection();
@@ -42,81 +52,106 @@ async function initializeSystem() {
 
 // Galeri bölümünü gizle
 function hideGallerySection() {
-    const gallerySection = document.querySelector('.gallery-section');
+    var gallerySection = document.querySelector('.gallery-section');
     if (gallerySection) {
         gallerySection.style.display = 'none';
         console.log('📷 Galeri bölümü gizlendi (gizlilik için)');
     }
 }
 
-// Backend bağlantı testi
-async function testBackend() {
-    try {
-        console.log('🔄 Backend test ediliyor...');
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        
-        const response = await fetch(`${API_BASE_URL}/`, {
-            method: 'GET',
-            signal: controller.signal,
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-            throw new Error(`Backend yanıt vermedi: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('✅ Backend çalışıyor:', data);
-        
-        OFFLINE_MODE = false;
-        enableUploadButton();
-        
-        // Debug bilgilerini kontrol et
+// Backend bağlantı testi - Promise tabanlı eski tarayıcı desteği
+function testBackend() {
+    return new Promise(function(resolve, reject) {
         try {
-            await checkDriveConnection();
-        } catch (debugError) {
-            console.warn('Drive bağlantısı kontrol edilemedi:', debugError);
+            console.log('🔄 Backend test ediliyor...');
+            
+            // XMLHttpRequest kullan - daha uyumlu
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', API_BASE_URL + '/', true);
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.timeout = 15000;
+            
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        console.log('✅ Backend çalışıyor:', data);
+                        
+                        OFFLINE_MODE = false;
+                        enableUploadButton();
+                        
+                        // Debug bilgilerini kontrol et
+                        checkDriveConnection();
+                        
+                        resolve(data);
+                    } catch (parseError) {
+                        console.error('JSON parse hatası:', parseError);
+                        reject(parseError);
+                    }
+                } else {
+                    reject(new Error('Backend yanıt vermedi: ' + xhr.status));
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error('❌ Network hatası');
+                OFFLINE_MODE = true;
+                disableUploadButton();
+                reject(new Error('Network hatası'));
+            };
+            
+            xhr.ontimeout = function() {
+                console.error('❌ Timeout hatası');
+                OFFLINE_MODE = true;
+                disableUploadButton();
+                reject(new Error('Timeout hatası'));
+            };
+            
+            xhr.send();
+            
+        } catch (error) {
+            console.error('❌ Backend test hatası:', error);
+            OFFLINE_MODE = true;
+            disableUploadButton();
+            reject(error);
         }
-        
-        return data;
-        
-    } catch (error) {
-        console.error('❌ Backend hatası:', error);
-        OFFLINE_MODE = true;
-        disableUploadButton();
-        throw error;
-    }
+    });
 }
 
 // Drive bağlantısını kontrol et
-async function checkDriveConnection() {
+function checkDriveConnection() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/debug`);
-        if (response.ok) {
-            const debug = await response.json();
-            console.log('🔍 Debug bilgileri:', debug);
-            
-            if (!debug.has_credentials) {
-                console.warn('⚠️ Google Drive kimlik bilgileri eksik');
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', API_BASE_URL + '/api/debug', true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var debug = JSON.parse(xhr.responseText);
+                    console.log('🔍 Debug bilgileri:', debug);
+                    
+                    if (!debug.has_credentials) {
+                        console.warn('⚠️ Google Drive kimlik bilgileri eksik');
+                    }
+                    if (!debug.folder_accessible) {
+                        console.warn('⚠️ Google Drive klasörüne erişim yok');
+                    }
+                } catch (e) {
+                    console.warn('Debug parse hatası:', e);
+                }
             }
-            if (!debug.folder_accessible) {
-                console.warn('⚠️ Google Drive klasörüne erişim yok');
-            }
-        }
+        };
+        xhr.onerror = function() {
+            console.warn('Debug endpoint erişilemedi');
+        };
+        xhr.send();
     } catch (error) {
-        console.warn('Debug endpoint erişilemedi:', error);
+        console.warn('Debug kontrol hatası:', error);
     }
 }
 
 // Upload butonunu aktif et
 function enableUploadButton() {
-    const btn = document.querySelector('.upload-btn');
+    var btn = document.querySelector('.upload-btn');
     if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Fotoğraf Yükle';
@@ -126,7 +161,7 @@ function enableUploadButton() {
 
 // Upload butonunu pasif et
 function disableUploadButton() {
-    const btn = document.querySelector('.upload-btn');
+    var btn = document.querySelector('.upload-btn');
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Bağlantı Hatası';
@@ -136,8 +171,8 @@ function disableUploadButton() {
 
 // Upload form setup
 function setupUploadForm() {
-    const form = document.getElementById('uploadForm');
-    const fileInput = document.getElementById('fileInput');
+    var form = document.getElementById('uploadForm');
+    var fileInput = document.getElementById('fileInput');
     
     if (!form || !fileInput) {
         console.error('❌ Upload form bulunamadı!');
@@ -153,9 +188,9 @@ function setupUploadForm() {
     fileInput.addEventListener('change', handleFileSelection);
     
     // Label click handler
-    const label = document.querySelector('.file-input-label');
+    var label = document.querySelector('.file-input-label');
     if (label) {
-        label.addEventListener('click', () => {
+        label.addEventListener('click', function() {
             if (!isUploading) {
                 fileInput.click();
             }
@@ -165,40 +200,62 @@ function setupUploadForm() {
 
 // Dosya seçimi handler
 function handleFileSelection(event) {
-    const file = event.target.files[0];
+    var file = event.target.files[0];
     if (!file) return;
     
     console.log('📁 Dosya seçildi:', file.name, file.size, 'bytes');
     
     // Dosya boyut kontrolü
-    const maxSize = 50 * 1024 * 1024; // 50MB
+    var maxSize = 50 * 1024 * 1024; // 50MB
     if (file.size > maxSize) {
         showMessage('❌ Dosya boyutu 50MB\'dan büyük olamaz!', 'error');
         event.target.value = '';
         return;
     }
     
-    // Dosya tipi kontrolü
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/mov', 'video/avi'];
-    if (!allowedTypes.includes(file.type)) {
+    // Dosya tipi kontrolü - daha uyumlu kontrol
+    var allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/mov', 'video/avi'];
+    var isValidType = false;
+    
+    for (var i = 0; i < allowedTypes.length; i++) {
+        if (file.type === allowedTypes[i]) {
+            isValidType = true;
+            break;
+        }
+    }
+    
+    // Dosya uzantısı kontrolü (fallback)
+    if (!isValidType) {
+        var fileName = file.name.toLowerCase();
+        var validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.avi'];
+        
+        for (var j = 0; j < validExtensions.length; j++) {
+            if (fileName.indexOf(validExtensions[j]) !== -1) {
+                isValidType = true;
+                break;
+            }
+        }
+    }
+    
+    if (!isValidType) {
         showMessage('❌ Sadece fotoğraf (JPG, PNG, GIF, WEBP) ve video (MP4, MOV, AVI) dosyaları desteklenir!', 'error');
         event.target.value = '';
         return;
     }
     
-    const fileSize = (file.size / 1024 / 1024).toFixed(2);
-    showMessage(`📁 ${file.name} seçildi (${fileSize} MB)`, 'success');
+    var fileSize = (file.size / 1024 / 1024).toFixed(2);
+    showMessage('📁 ' + file.name + ' seçildi (' + fileSize + ' MB)', 'success');
     
     // Upload label güncelle
-    const label = document.querySelector('.file-input-label span');
+    var label = document.querySelector('.file-input-label span');
     if (label) {
-        label.textContent = `✓ ${file.name} seçildi`;
+        label.textContent = '✓ ' + file.name + ' seçildi';
         label.parentElement.classList.add('file-selected');
     }
 }
 
 // Upload handler
-async function handleUpload(event) {
+function handleUpload(event) {
     event.preventDefault();
     
     if (isUploading) {
@@ -206,8 +263,8 @@ async function handleUpload(event) {
         return;
     }
     
-    const fileInput = document.getElementById('fileInput');
-    const file = fileInput.files[0];
+    var fileInput = document.getElementById('fileInput');
+    var file = fileInput.files[0];
     
     if (!file) {
         showMessage('📁 Lütfen önce bir dosya seçin!', 'error');
@@ -224,129 +281,143 @@ async function handleUpload(event) {
         updateProgress(0, 'Yükleme hazırlanıyor...');
         
         // FormData oluştur
-        const formData = new FormData();
+        var formData = new FormData();
         formData.append('file', file);
         
         // Upload işlemini başlat
-        const result = await uploadWithProgress(formData);
-        
-        if (result.success) {
-            updateProgress(100, 'Tamamlandı!');
-            
-            const driveStatus = result.drive_status === 'backed_up' ? 
-                '✅ Google Drive\'a yedeklendi!' : 
-                '💾 Sunucuda saklandı';
-            
-            setTimeout(async () => {
-                hideProgressModal();
-                showMessage(`✅ ${file.name} başarıyla yüklendi! ${driveStatus}`, 'success');
-                
-                // Form temizle
-                fileInput.value = '';
-                const label = document.querySelector('.file-input-label span');
-                if (label) {
-                    label.textContent = 'Fotoğraf veya video seçin';
-                    label.parentElement.classList.remove('file-selected');
+        uploadWithProgress(formData)
+            .then(function(result) {
+                if (result.success) {
+                    updateProgress(100, 'Tamamlandı!');
+                    
+                    var driveStatus = result.drive_status === 'backed_up' ? 
+                        '✅ Google Drive\'a yedeklendi!' : 
+                        '💾 Sunucuda saklandı';
+                    
+                    setTimeout(function() {
+                        hideProgressModal();
+                        showMessage('✅ ' + file.name + ' başarıyla yüklendi! ' + driveStatus, 'success');
+                        
+                        // Form temizle
+                        fileInput.value = '';
+                        var label = document.querySelector('.file-input-label span');
+                        if (label) {
+                            label.textContent = 'Fotoğraf veya video seçin';
+                            label.parentElement.classList.remove('file-selected');
+                        }
+                        
+                        isUploading = false;
+                        
+                    }, 2000);
+                    
+                } else {
+                    throw new Error(result.error || 'Yükleme başarısız');
                 }
-                
-            }, 2000);
-            
-        } else {
-            throw new Error(result.error || 'Yükleme başarısız');
-        }
+            })
+            .catch(function(error) {
+                console.error('❌ Upload hatası:', error);
+                hideProgressModal();
+                showMessage('❌ Yükleme hatası: ' + error.message, 'error');
+                isUploading = false;
+            });
         
     } catch (error) {
-        console.error('❌ Upload hatası:', error);
+        console.error('❌ Upload genel hatası:', error);
         hideProgressModal();
-        showMessage(`❌ Yükleme hatası: ${error.message}`, 'error');
-        
-    } finally {
+        showMessage('❌ Yükleme hatası: ' + error.message, 'error');
         isUploading = false;
     }
 }
 
-// Progress ile upload
+// Progress ile upload - Promise tabanlı
 function uploadWithProgress(formData) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
         
         // Progress tracking
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                updateProgress(percent, `Yükleniyor... ${percent}%`);
-            }
-        });
+        if (xhr.upload) {
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    var percent = Math.round((e.loaded / e.total) * 100);
+                    updateProgress(percent, 'Yükleniyor... ' + percent + '%');
+                }
+            });
+        }
         
         // Response handler
-        xhr.addEventListener('load', () => {
+        xhr.addEventListener('load', function() {
             if (xhr.status === 200) {
                 try {
-                    const response = JSON.parse(xhr.responseText);
+                    var response = JSON.parse(xhr.responseText);
                     resolve(response);
                 } catch (error) {
                     reject(new Error('Sunucu yanıtı okunamadı'));
                 }
             } else {
-                reject(new Error(`Sunucu hatası: ${xhr.status}`));
+                reject(new Error('Sunucu hatası: ' + xhr.status));
             }
         });
         
         // Error handler
-        xhr.addEventListener('error', () => {
+        xhr.addEventListener('error', function() {
             reject(new Error('İnternet bağlantısı hatası'));
         });
         
+        // Timeout handler
+        xhr.timeout = 300000; // 5 dakika
+        xhr.addEventListener('timeout', function() {
+            reject(new Error('Yükleme zaman aşımı'));
+        });
+        
         // Send request
-        xhr.open('POST', `${API_BASE_URL}/api/upload`);
+        xhr.open('POST', API_BASE_URL + '/api/upload');
         xhr.send(formData);
     });
 }
 
 // Progress modal göster
 function showProgressModal() {
-    let modal = document.getElementById('progressModal');
+    var modal = document.getElementById('progressModal');
     
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'progressModal';
-        modal.innerHTML = `
-            <div class="modal-overlay">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <i class="fas fa-cloud-upload-alt pulse"></i>
-                        <h3>Fotoğraf Yükleniyor</h3>
-                    </div>
-                    <div class="progress-wrapper">
-                        <div class="progress-bar">
-                            <div class="progress-fill"></div>
-                        </div>
-                        <div class="progress-text">0%</div>
-                        <div class="progress-message">Hazırlanıyor...</div>
-                    </div>
-                    <div class="upload-animation">
-                        <div class="upload-step active">
-                            <i class="fas fa-file-image"></i>
-                            <span>Dosya</span>
-                        </div>
-                        <div class="upload-arrow">
-                            <i class="fas fa-arrow-right bounce"></i>
-                        </div>
-                        <div class="upload-step">
-                            <i class="fas fa-server"></i>
-                            <span>Sunucu</span>
-                        </div>
-                        <div class="upload-arrow">
-                            <i class="fas fa-arrow-right bounce"></i>
-                        </div>
-                        <div class="upload-step">
-                            <i class="fab fa-google-drive"></i>
-                            <span>Drive</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+        modal.innerHTML = 
+            '<div class="modal-overlay">' +
+                '<div class="modal-content">' +
+                    '<div class="modal-header">' +
+                        '<i class="fas fa-cloud-upload-alt pulse"></i>' +
+                        '<h3>Fotoğraf Yükleniyor</h3>' +
+                    '</div>' +
+                    '<div class="progress-wrapper">' +
+                        '<div class="progress-bar">' +
+                            '<div class="progress-fill"></div>' +
+                        '</div>' +
+                        '<div class="progress-text">0%</div>' +
+                        '<div class="progress-message">Hazırlanıyor...</div>' +
+                    '</div>' +
+                    '<div class="upload-animation">' +
+                        '<div class="upload-step active">' +
+                            '<i class="fas fa-file-image"></i>' +
+                            '<span>Dosya</span>' +
+                        '</div>' +
+                        '<div class="upload-arrow">' +
+                            '<i class="fas fa-arrow-right bounce"></i>' +
+                        '</div>' +
+                        '<div class="upload-step">' +
+                            '<i class="fas fa-server"></i>' +
+                            '<span>Sunucu</span>' +
+                        '</div>' +
+                        '<div class="upload-arrow">' +
+                            '<i class="fas fa-arrow-right bounce"></i>' +
+                        '</div>' +
+                        '<div class="upload-step">' +
+                            '<i class="fab fa-google-drive"></i>' +
+                            '<span>Drive</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
         
         document.body.appendChild(modal);
     }
@@ -356,16 +427,16 @@ function showProgressModal() {
 
 // Progress güncelle
 function updateProgress(percent, message) {
-    const modal = document.getElementById('progressModal');
+    var modal = document.getElementById('progressModal');
     if (!modal) return;
     
-    const fill = modal.querySelector('.progress-fill');
-    const text = modal.querySelector('.progress-text');
-    const msg = modal.querySelector('.progress-message');
-    const steps = modal.querySelectorAll('.upload-step');
+    var fill = modal.querySelector('.progress-fill');
+    var text = modal.querySelector('.progress-text');
+    var msg = modal.querySelector('.progress-message');
+    var steps = modal.querySelectorAll('.upload-step');
     
-    if (fill) fill.style.width = `${percent}%`;
-    if (text) text.textContent = `${percent}%`;
+    if (fill) fill.style.width = percent + '%';
+    if (text) text.textContent = percent + '%';
     if (msg) msg.textContent = message;
     
     // Step animasyonları
@@ -376,36 +447,36 @@ function updateProgress(percent, message) {
         steps[2].classList.add('active');
     }
     if (percent >= 100) {
-        steps.forEach(step => step.classList.add('completed'));
+        for (var i = 0; i < steps.length; i++) {
+            steps[i].classList.add('completed');
+        }
         if (fill) fill.style.background = 'linear-gradient(90deg, #10b981, #059669)';
     }
 }
 
 // Progress modal gizle
 function hideProgressModal() {
-    const modal = document.getElementById('progressModal');
+    var modal = document.getElementById('progressModal');
     if (modal) {
         modal.style.display = 'none';
     }
 }
 
-// Drag & Drop
+// Drag & Drop - eski tarayıcı desteği
 function setupDragAndDrop() {
-    const dropZone = document.querySelector('.file-input-label');
+    var dropZone = document.querySelector('.file-input-label');
     if (!dropZone) return;
     
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-    });
+    var events = ['dragenter', 'dragover', 'dragleave', 'drop'];
     
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, highlight, false);
-    });
+    for (var i = 0; i < events.length; i++) {
+        dropZone.addEventListener(events[i], preventDefaults, false);
+    }
     
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, unhighlight, false);
-    });
-    
+    dropZone.addEventListener('dragenter', highlight, false);
+    dropZone.addEventListener('dragover', highlight, false);
+    dropZone.addEventListener('dragleave', unhighlight, false);
+    dropZone.addEventListener('drop', unhighlight, false);
     dropZone.addEventListener('drop', handleDrop, false);
     
     function preventDefaults(e) {
@@ -422,44 +493,47 @@ function setupDragAndDrop() {
     }
     
     function handleDrop(e) {
-        const files = e.dataTransfer.files;
+        var files = e.dataTransfer.files;
         if (files.length > 0) {
-            const fileInput = document.getElementById('fileInput');
+            var fileInput = document.getElementById('fileInput');
             fileInput.files = files;
-            handleFileSelection({ target: { files } });
+            handleFileSelection({ target: { files: files } });
         }
     }
 }
 
-// Mesaj gösterme
-function showMessage(text, type = 'info') {
+// Mesaj gösterme - eski tarayıcı uyumlu
+function showMessage(text, type) {
+    type = type || 'info';
+    
     // Eski mesajı kaldır
-    const existing = document.querySelector('.message-toast');
-    if (existing) existing.remove();
+    var existing = document.querySelector('.message-toast');
+    if (existing && existing.parentNode) {
+        existing.parentNode.removeChild(existing);
+    }
     
     // Yeni mesaj oluştur
-    const toast = document.createElement('div');
-    toast.className = `message-toast ${type}`;
-    toast.innerHTML = `
-        <div class="toast-content">
-            <i class="fas fa-${getMessageIcon(type)}"></i>
-            <span>${text}</span>
-        </div>
-    `;
+    var toast = document.createElement('div');
+    toast.className = 'message-toast ' + type;
+    toast.innerHTML = 
+        '<div class="toast-content">' +
+            '<i class="fas fa-' + getMessageIcon(type) + '"></i>' +
+            '<span>' + text + '</span>' +
+        '</div>';
     
     document.body.appendChild(toast);
     
     // Otomatik kaldır
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.remove();
+    setTimeout(function() {
+        if (toast && toast.parentNode) {
+            toast.parentNode.removeChild(toast);
         }
     }, 6000);
 }
 
 // Mesaj ikonu
 function getMessageIcon(type) {
-    const icons = {
+    var icons = {
         'success': 'check-circle',
         'error': 'exclamation-circle',
         'warning': 'exclamation-triangle',

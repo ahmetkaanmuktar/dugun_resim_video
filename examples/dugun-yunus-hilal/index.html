@@ -2,103 +2,190 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- AGGRESSIVE CACHE PREVENTION -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, private, max-age=0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#8b5cf6">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Düğün fotoğraf ve video yükleme sistemi - Modern ve güvenli">
+    <meta name="keywords" content="düğün, fotoğraf, video, yükleme, galeri">
+    <meta name="robots" content="noindex, nofollow">
+    
+    <!-- Cache Control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="cache-control" content="no-cache">
-    <meta name="expires" content="0">
-    <meta name="pragma" content="no-cache">
-    <title>Düğün Fotoğraf & Video Paylaşımı</title>
     
-    <!-- Modern Font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>📸 Düğün Fotoğraf Sistemi V8.0.0</title>
     
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
     
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=8.0.0">
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css?v=8.0.0&cache_bust=<?php echo time(); ?>">
     
-    <!-- Meta Tags -->
-    <meta name="description" content="Düğün anılarınızı paylaşın - Modern fotoğraf ve video yükleme sistemi">
-    <meta name="keywords" content="düğün, fotoğraf, video, paylaşım, anı">
-    <meta name="author" content="Ahmet Kaan Muktar">
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com">
+    <link rel="dns-prefetch" href="https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com">
     
-    <!-- Open Graph -->
-    <meta property="og:title" content="Düğün Fotoğraf & Video Paylaşımı">
-    <meta property="og:description" content="Düğün anılarınızı paylaşın ve sevdiklerinizle birlikte yaşayın">
-    <meta property="og:type" content="website">
+    <!-- iOS Safari fixes -->
+    <meta name="apple-touch-fullscreen" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Düğün Sistemi">
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
+    <!-- Android Chrome fixes -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Düğün Sistemi">
+    
+    <!-- Prevent zoom on iOS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    
+    <style>
+        /* Critical CSS for faster loading */
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+            min-height: 100vh;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 1rem; font-size: 1.1rem;">Sistem hazırlanıyor...</p>
+        </div>
+    </div>
+
     <div class="container">
-        <!-- Header Section -->
-        <header class="header">
-            <div class="header-content">
-                <i class="fas fa-camera header-icon"></i>
-                <h1 class="header-title">Düğün Etkinliği <span class="heart">💜</span></h1>
-                <p class="header-subtitle">Anılarınızı paylaşın - Modern fotoğraf ve video sistemi</p>
+        <div class="main-card">
+            <!-- Header -->
+            <div class="header">
+                <span class="emoji">📸</span>
+                <h1>Düğün Fotoğraf Sistemi</h1>
+                <p>Özel anlarınızı güvenle paylaşın</p>
             </div>
-        </header>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            
             <!-- Upload Section -->
-            <section class="upload-card">
-                <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                <h2><i class="fas fa-upload"></i> Fotoğraf & Video Yükle</h2>
-                <p>Fotoğraf veya video seçin<br>En fazla 50MB • JPG, PNG, MP4, MOV</p>
-
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <div class="file-input-container">
+            <div class="upload-section">
+                <form id="uploadForm" class="upload-form">
+                    <div class="file-input-wrapper">
                         <label for="fileInput" class="file-input-label">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <span>Fotoğraf veya video seçin</span>
-                            <small>Sürükle bırak veya tıkla</small>
+                            <small style="color: #9ca3af; margin-top: 0.5rem; display: block;">
+                                Desteklenen formatlar: JPG, PNG, GIF, WEBP, MP4, MOV, AVI (Max 50MB)
+                            </small>
                         </label>
-                        <input type="file" id="fileInput" name="file" accept="image/*,video/*" style="display: none;">
+                        <input type="file" id="fileInput" accept="image/*,video/*" style="display: none;">
                     </div>
                     
-                    <button type="submit" class="upload-btn">
-                        <i class="fas fa-cloud-upload-alt"></i> Yükle
+                    <button type="submit" class="upload-btn" disabled>
+                        <i class="fas fa-spinner fa-spin"></i> Bağlantı kontrol ediliyor...
                     </button>
                 </form>
-            </section>
+            </div>
 
-            <!-- QR Code Section -->
-            <section class="qr-card">
-                <h3><i class="fas fa-qrcode"></i> QR Kodu ile Paylaş</h3>
-                <p>Bu sayfayı başkalarına göndermek için QR kodu okutun:</p>
-                <div class="qr-container">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://ahmetkaanmuktar.github.io/dugun_resim_video/examples/dugun-yunus-hilal/" 
-                         alt="QR Code" class="qr-code">
-                </div>
-            </section>
-
-        </main>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <div class="footer-content">
-                <span class="footer-text">🎨 Modern tasarım ile hazırlandı</span>
-                <div class="social-links">
-                    <a href="https://instagram.com/ahmetkaanmuktar" class="social-link" target="_blank">
-                        <i class="fab fa-instagram"></i>
-                        <span>@ahmetkaanmuktar</span>
-                    </a>
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-content">
+                    <div class="social-links">
+                        <a href="https://instagram.com/your_account" target="_blank" rel="noopener noreferrer" class="social-link">
+                            <i class="fab fa-instagram"></i>
+                            <span>Instagram</span>
+                        </a>
+                    </div>
+                    <div class="copyright">
+                        <p>&copy; 2024 Modern Düğün Sistemi. Tüm hakları saklıdır.</p>
+                    </div>
                 </div>
             </div>
-        </footer>
+        </div>
     </div>
 
-    <!-- JavaScript -->
-    <script src="script.js?v=8.0.0"></script>
+    <!-- Scripts -->
+    <script>
+        // Hide loading screen when page loads
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                var loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.style.opacity = '0';
+                    loadingScreen.style.transition = 'opacity 0.5s ease';
+                    setTimeout(function() {
+                        loadingScreen.style.display = 'none';
+                    }, 500);
+                }
+            }, 500);
+        });
+        
+        // Fallback for older browsers
+        setTimeout(function() {
+            var loadingScreen = document.getElementById('loadingScreen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+        }, 3000);
+    </script>
+    
+    <script src="script.js?v=8.0.0&cache_bust=<?php echo time(); ?>" defer></script>
+    
+    <!-- Browser Compatibility Polyfills -->
+    <script nomodule>
+        // Polyfill for Promise (IE11 support)
+        if (!window.Promise) {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/promise-polyfill@8/dist/polyfill.min.js"><\/script>');
+        }
+        
+        // Polyfill for fetch (IE11 support)
+        if (!window.fetch) {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.js"><\/script>');
+        }
+    </script>
+    
+    <!-- Error Tracking -->
+    <script>
+        window.addEventListener('error', function(e) {
+            console.error('JavaScript Hatası:', e.error);
+            console.error('Dosya:', e.filename);
+            console.error('Satır:', e.lineno);
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Promise Hatası:', e.reason);
+        });
+    </script>
 </body>
 </html> 
