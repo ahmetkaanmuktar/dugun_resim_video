@@ -416,6 +416,12 @@ function createThumbnail(file) {
 }
 
 function removeFile(fileId) {
+    // Yükleme devam ediyorsa dosya kaldırmayı engelle
+    if (isUploading) {
+        showMessage('⚠️ Yükleme devam ediyor, dosya kaldırılamaz!', 'warning');
+        return;
+    }
+
     console.log('🗑️ Dosya kaldırılıyor:', fileId);
 
     // Array'den kaldır
@@ -869,6 +875,62 @@ function fallbackCopyToClipboard(text) {
     }
 
     document.body.removeChild(textArea);
+}
+
+// QR kod indirme fonksiyonu
+function downloadQRCode() {
+    var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&format=png&data=https://ahmetkaanmuktar.github.io/dugun_resim_video/examples/dugun-yunus-hilal/';
+
+    // Canvas oluşturup QR kodu çiz
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var img = new Image();
+
+    img.crossOrigin = 'anonymous'; // CORS sorununu önle
+
+    img.onload = function () {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        // Canvas'ı blob'a çevir
+        canvas.toBlob(function (blob) {
+            if (blob) {
+                // İndirme linki oluştur
+                var link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'dugun-qr-kod.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+
+                showMessage('📥 QR kod indirildi!', 'success');
+            } else {
+                // Fallback: Direct link download
+                fallbackQRDownload(qrUrl);
+            }
+        }, 'image/png');
+    };
+
+    img.onerror = function () {
+        // Fallback: Direct link download
+        fallbackQRDownload(qrUrl);
+    };
+
+    img.src = qrUrl;
+}
+
+function fallbackQRDownload(qrUrl) {
+    var link = document.createElement('a');
+    link.href = qrUrl;
+    link.download = 'dugun-qr-kod.png';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showMessage('📥 QR kod indiriliyor...', 'info');
 }
 
 console.log('✅ Hızlı Paralel Upload Düğün Sistemi yüklendi!'); 
