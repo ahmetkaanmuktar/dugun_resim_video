@@ -1,79 +1,93 @@
-// Düğün Fotoğraf Yükleme Sistemi - Heroku Backend
+// 📸 Düğün Fotoğraf Yükleme Sistemi V6.0.0 - TAMAMEN YENİLENDİ
 const API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
-
-// Offline mode flag
 let OFFLINE_MODE = false;
+let isUploading = false;
 
-// DOM yüklendiğinde çalışacak fonksiyonlar
+console.log('🎉 Düğün Fotoğraf Sistemi V6.0.0 başlatılıyor...');
+
+// DOM hazır olduğunda sistemi başlat
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎉 Düğün Fotoğraf Sistemi başlatılıyor...');
-    initializeApp();
-    setupUploadForm();
-    loadGallery();
-    setupDragAndDrop();
-    
-    // Cache temizleme bildirimi
-    showNotification('🔄 Sistem başlatılıyor...', 'info');
+    console.log('📱 DOM yüklendi, sistem başlatılıyor...');
+    initializeSystem();
 });
 
-// Uygulama başlatma
-function initializeApp() {
-    console.log('📸 Sistem kontrolleri yapılıyor...');
-    testBackendConnection();
+// Sistem başlatma
+async function initializeSystem() {
+    try {
+        showMessage('🔄 Sistem kontrolleri yapılıyor...', 'info');
+        
+        // Backend bağlantısını test et
+        await testBackend();
+        
+        // Form ve galeriyi hazırla
+        setupUploadForm();
+        setupDragAndDrop();
+        await loadGallery();
+        
+        showMessage('✅ Sistem hazır! Fotoğraflarınızı yükleyebilirsiniz.', 'success');
+        
+    } catch (error) {
+        console.error('❌ Sistem başlatma hatası:', error);
+        showMessage('⚠️ Sistem başlatılırken hata oluştu. Sayfa yenilenecek...', 'error');
+        setTimeout(() => location.reload(), 3000);
+    }
 }
 
 // Backend bağlantı testi
-async function testBackendConnection() {
+async function testBackend() {
     try {
-        console.log('🔄 Backend bağlantı testi başlatılıyor...');
-        const response = await fetch(`${API_BASE_URL}`, {
+        console.log('🔄 Backend test ediliyor...');
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch(`${API_BASE_URL}/`, {
             method: 'GET',
+            signal: controller.signal,
             headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            timeout: 15000
+                'Accept': 'application/json'
+            }
         });
         
+        clearTimeout(timeoutId);
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`Backend yanıt vermedi: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('✅ Backend bağlantısı başarılı:', data);
+        console.log('✅ Backend çalışıyor:', data);
+        
         OFFLINE_MODE = false;
+        enableUploadButton();
         
-        // Backend'in storage tipini kontrol et
-        if (data.storage === 'local_with_drive_backup') {
-            showNotification('✅ Sistem hazır! Fotoğraf ve videolarınızı yükleyebilirsiniz.', 'success');
-            
-            // Upload butonunu aktif et
-            const uploadBtn = document.querySelector('.upload-btn');
-            if (uploadBtn) {
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Yükle';
-                uploadBtn.style.opacity = '1';
-            }
-        }
+        return data;
+        
     } catch (error) {
-        console.error('❌ Backend bağlantı hatası:', error);
+        console.error('❌ Backend hatası:', error);
         OFFLINE_MODE = true;
-        
-        showNotification('⚠️ Sunucu bağlantısı kurulamıyor. Lütfen sayfayı yenileyin.', 'error');
-        
-        // Offline mode için upload butonunu disable et
-        const uploadBtn = document.querySelector('.upload-btn');
-        if (uploadBtn) {
-            uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Bağlantı Hatası';
-            uploadBtn.style.opacity = '0.6';
-        }
-        
-        // 30 saniye sonra tekrar dene
-        setTimeout(() => {
-            console.log('🔄 Backend tekrar kontrol ediliyor...');
-            testBackendConnection();
-        }, 30000);
+        disableUploadButton();
+        throw error;
+    }
+}
+
+// Upload butonunu aktif et
+function enableUploadButton() {
+    const btn = document.querySelector('.upload-btn');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload"></i> Fotoğraf Yükle';
+        btn.style.opacity = '1';
+    }
+}
+
+// Upload butonunu pasif et
+function disableUploadButton() {
+    const btn = document.querySelector('.upload-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Bağlantı Hatası';
+        btn.style.opacity = '0.6';
     }
 }
 
@@ -82,41 +96,74 @@ function setupUploadForm() {
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     
-    if (form && fileInput) {
-        form.addEventListener('submit', handleFileUpload);
-        fileInput.addEventListener('change', handleFileSelect);
-    } else {
-        console.error('❌ Upload form elemanları bulunamadı!');
+    if (!form || !fileInput) {
+        console.error('❌ Upload form bulunamadı!');
+        return;
+    }
+    
+    console.log('📝 Upload form hazırlanıyor...');
+    
+    // Form submit handler
+    form.addEventListener('submit', handleUpload);
+    
+    // File input change handler
+    fileInput.addEventListener('change', handleFileSelection);
+    
+    // Label click handler
+    const label = document.querySelector('.file-input-label');
+    if (label) {
+        label.addEventListener('click', () => {
+            if (!OFFLINE_MODE && !isUploading) {
+                fileInput.click();
+            }
+        });
     }
 }
 
 // Dosya seçimi handler
-function handleFileSelect(event) {
-    const files = event.target.files;
-    if (files.length > 0) {
-        const file = files[0];
-        const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
-        
-        if (file.size > 50 * 1024 * 1024) { // 50MB limit
-            showNotification('❌ Dosya boyutu 50MB\'dan küçük olmalıdır!', 'error');
-            event.target.value = '';
-            return;
-        }
-        
-        if (OFFLINE_MODE) {
-            showNotification(`📁 Dosya seçildi: ${file.name} (${fileSize} MB) - Sunucu bağlantısı bekleniyor...`, 'warning');
-        } else {
-            showNotification(`📁 Dosya seçildi: ${file.name} (${fileSize} MB) - Yüklemeye hazır!`, 'success');
-        }
+function handleFileSelection(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    console.log('📁 Dosya seçildi:', file.name, file.size, 'bytes');
+    
+    // Dosya boyut kontrolü
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+        showMessage('❌ Dosya boyutu 50MB\'dan büyük olamaz!', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    // Dosya tipi kontrolü
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'video/mp4', 'video/mov', 'video/avi'];
+    if (!allowedTypes.includes(file.type)) {
+        showMessage('❌ Sadece fotoğraf (JPG, PNG, GIF) ve video (MP4, MOV, AVI) dosyaları yüklenebilir!', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+    showMessage(`📁 ${file.name} seçildi (${fileSize} MB) - Yüklemeye hazır!`, 'success');
+    
+    // Upload label güncelle
+    const label = document.querySelector('.file-input-label span');
+    if (label) {
+        label.textContent = `Seçilen: ${file.name}`;
     }
 }
 
-// Dosya yükleme handler
-async function handleFileUpload(event) {
+// Upload handler
+async function handleUpload(event) {
     event.preventDefault();
     
     if (OFFLINE_MODE) {
-        showNotification('❌ Sunucu bağlantısı yok. Lütfen bekleyin ve tekrar deneyin.', 'error');
+        showMessage('❌ İnternet bağlantınızı kontrol edin!', 'error');
+        return;
+    }
+    
+    if (isUploading) {
+        showMessage('⏳ Zaten bir yükleme işlemi devam ediyor...', 'warning');
         return;
     }
     
@@ -124,217 +171,204 @@ async function handleFileUpload(event) {
     const file = fileInput.files[0];
     
     if (!file) {
-        showNotification('📁 Lütfen bir dosya seçin!', 'error');
+        showMessage('📁 Lütfen önce bir dosya seçin!', 'error');
         return;
     }
     
-    const uploadBtn = document.querySelector('.upload-btn');
-    const originalText = uploadBtn.innerHTML;
+    isUploading = true;
     
     try {
-        console.log('🚀 Dosya yükleme başlatılıyor:', file.name);
+        console.log('🚀 Upload başlatılıyor:', file.name);
         
-        // Upload butonunu disable et
-        uploadBtn.disabled = true;
-        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
+        // Progress modal göster
+        showProgressModal();
+        updateProgress(0, 'Yükleme hazırlanıyor...');
         
         // FormData oluştur
         const formData = new FormData();
         formData.append('file', file);
         
-        // Progress bar göster
-        showUploadProgress(0, 'Yükleme başlatılıyor...');
+        // Upload işlemini başlat
+        const result = await uploadWithProgress(formData);
         
-        // Minimum 5 saniye progress bar göster
-        const uploadPromise = uploadFileWithProgress(formData);
-        const minTimePromise = new Promise(resolve => setTimeout(resolve, 5000));
-        
-        const [response] = await Promise.all([uploadPromise, minTimePromise]);
-        
-        if (response.success) {
-            showUploadProgress(100, 'Tamamlandı!');
-            setTimeout(() => {
-                hideUploadProgress();
-                showNotification(`✅ Dosya başarıyla yüklendi! ${response.drive_status === 'backed_up' ? '(Google Drive\'a yedeklendi)' : '(Sunucuda saklanıyor)'}`, 'success');
-                fileInput.value = ''; // Input'u temizle
-                loadGallery(); // Galeriyi yenile
-            }, 1000);
+        if (result.success) {
+            updateProgress(100, 'Tamamlandı!');
+            
+            setTimeout(async () => {
+                hideProgressModal();
+                showMessage(`✅ ${file.name} başarıyla yüklendi!`, 'success');
+                
+                // Form temizle
+                fileInput.value = '';
+                const label = document.querySelector('.file-input-label span');
+                if (label) {
+                    label.textContent = 'Fotoğraf veya video seçin';
+                }
+                
+                // Galeriyi yenile
+                await loadGallery();
+                
+            }, 1500);
+            
         } else {
-            throw new Error(response.error || 'Yükleme başarısız');
+            throw new Error(result.error || 'Yükleme başarısız');
         }
         
     } catch (error) {
         console.error('❌ Upload hatası:', error);
-        hideUploadProgress();
-        showNotification('❌ Dosya yüklenirken hata oluştu: ' + error.message, 'error');
+        hideProgressModal();
+        showMessage(`❌ Yükleme hatası: ${error.message}`, 'error');
+        
     } finally {
-        // Upload butonunu restore et
-        setTimeout(() => {
-            uploadBtn.disabled = false;
-            uploadBtn.innerHTML = originalText;
-        }, 1000);
+        isUploading = false;
     }
 }
 
-// Progress ile dosya yükleme
-async function uploadFileWithProgress(formData) {
+// Progress ile upload
+function uploadWithProgress(formData) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         
         // Progress tracking
         xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                showUploadProgress(percentComplete, `Yükleniyor... ${Math.round(percentComplete)}%`);
+                const percent = Math.round((e.loaded / e.total) * 100);
+                updateProgress(percent, `Yükleniyor... ${percent}%`);
             }
         });
         
-        // Response handling
+        // Response handler
         xhr.addEventListener('load', () => {
             if (xhr.status === 200) {
                 try {
                     const response = JSON.parse(xhr.responseText);
-                    console.log('✅ Sunucu yanıtı:', response);
                     resolve(response);
                 } catch (error) {
-                    console.error('❌ JSON parse hatası:', error);
-                    reject(new Error('Sunucu yanıtı işlenemedi'));
+                    reject(new Error('Sunucu yanıtı okunamadı'));
                 }
             } else {
-                try {
-                    const errorResponse = JSON.parse(xhr.responseText);
-                    console.error('❌ Sunucu hatası:', errorResponse);
-                    reject(new Error(errorResponse.error || 'Sunucu hatası'));
-                } catch (error) {
-                    reject(new Error(`Sunucu hatası: ${xhr.status}`));
-                }
+                reject(new Error(`Sunucu hatası: ${xhr.status}`));
             }
         });
         
+        // Error handler
         xhr.addEventListener('error', () => {
-            console.error('❌ Ağ hatası');
-            reject(new Error('Ağ hatası oluştu'));
+            reject(new Error('İnternet bağlantısı hatası'));
         });
         
-        // Request gönder - Cache buster kullanma
+        // Send request
         xhr.open('POST', `${API_BASE_URL}/api/upload`);
         xhr.send(formData);
     });
 }
 
-// Gelişmiş upload progress göster
-function showUploadProgress(percent, message = '') {
-    let progressModal = document.getElementById('uploadProgressModal');
+// Progress modal göster
+function showProgressModal() {
+    let modal = document.getElementById('progressModal');
     
-    if (!progressModal) {
-        progressModal = document.createElement('div');
-        progressModal.id = 'uploadProgressModal';
-        progressModal.innerHTML = `
-            <div class="progress-modal-overlay">
-                <div class="progress-modal-content">
-                    <div class="progress-header">
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'progressModal';
+        modal.innerHTML = `
+            <div class="modal-overlay">
+                <div class="modal-content">
+                    <div class="modal-header">
                         <i class="fas fa-cloud-upload-alt"></i>
-                        <h3>Dosya Yükleniyor</h3>
+                        <h3>Fotoğraf Yükleniyor</h3>
                     </div>
-                    <div class="progress-container">
+                    <div class="progress-wrapper">
                         <div class="progress-bar">
                             <div class="progress-fill"></div>
-                            <div class="progress-text">0%</div>
                         </div>
+                        <div class="progress-text">0%</div>
                         <div class="progress-message">Hazırlanıyor...</div>
                     </div>
-                    <div class="progress-animation">
-                        <div class="upload-icon">
+                    <div class="upload-animation">
+                        <div class="upload-step active">
                             <i class="fas fa-file-image"></i>
+                            <span>Dosya</span>
                         </div>
                         <div class="upload-arrow">
-                            <i class="fas fa-arrow-up"></i>
+                            <i class="fas fa-arrow-right"></i>
                         </div>
-                        <div class="cloud-icon">
+                        <div class="upload-step">
                             <i class="fas fa-cloud"></i>
+                            <span>Sunucu</span>
+                        </div>
+                        <div class="upload-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                        <div class="upload-step">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Tamamlandı</span>
                         </div>
                     </div>
                 </div>
             </div>
         `;
         
-        document.body.appendChild(progressModal);
+        document.body.appendChild(modal);
     }
     
-    const progressFill = progressModal.querySelector('.progress-fill');
-    const progressText = progressModal.querySelector('.progress-text');
-    const progressMessage = progressModal.querySelector('.progress-message');
-    
-    progressFill.style.width = `${Math.min(percent, 100)}%`;
-    progressText.textContent = `${Math.round(Math.min(percent, 100))}%`;
-    progressMessage.textContent = message;
-    
-    // Renk değişimi
-    if (percent >= 100) {
-        progressFill.style.background = 'linear-gradient(90deg, #4ade80, #22c55e)';
-        progressModal.querySelector('.progress-header i').className = 'fas fa-check-circle';
-        progressModal.querySelector('.progress-header h3').textContent = 'Yükleme Tamamlandı';
-    } else if (percent >= 50) {
-        progressFill.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
-    } else {
-        progressFill.style.background = 'linear-gradient(90deg, #667eea, #764ba2)';
-    }
-    
-    progressModal.style.display = 'flex';
+    modal.style.display = 'flex';
 }
 
-// Upload progress gizle
-function hideUploadProgress() {
-    const progressModal = document.getElementById('uploadProgressModal');
-    if (progressModal) {
-        progressModal.style.display = 'none';
+// Progress güncelle
+function updateProgress(percent, message) {
+    const modal = document.getElementById('progressModal');
+    if (!modal) return;
+    
+    const fill = modal.querySelector('.progress-fill');
+    const text = modal.querySelector('.progress-text');
+    const msg = modal.querySelector('.progress-message');
+    const steps = modal.querySelectorAll('.upload-step');
+    
+    if (fill) fill.style.width = `${percent}%`;
+    if (text) text.textContent = `${percent}%`;
+    if (msg) msg.textContent = message;
+    
+    // Step animasyonları
+    if (percent > 30 && steps[1]) {
+        steps[1].classList.add('active');
+    }
+    if (percent >= 100 && steps[2]) {
+        steps[2].classList.add('active');
+        if (fill) fill.style.background = 'linear-gradient(90deg, #10b981, #059669)';
+    }
+}
+
+// Progress modal gizle
+function hideProgressModal() {
+    const modal = document.getElementById('progressModal');
+    if (modal) {
+        modal.style.display = 'none';
     }
 }
 
 // Galeri yükleme
 async function loadGallery() {
     try {
-        if (OFFLINE_MODE) {
-            displayOfflineGallery();
-            return;
-        }
-        
         console.log('📷 Galeri yükleniyor...');
+        
         const response = await fetch(`${API_BASE_URL}/api/gallery`);
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`Galeri yüklenemedi: ${response.status}`);
         }
+        
         const data = await response.json();
         
-        if (data.success && data.files) {
-            console.log(`✅ ${data.files.length} dosya bulundu`);
+        if (data.success && data.files && data.files.length > 0) {
             displayGallery(data.files);
+            console.log(`✅ ${data.files.length} dosya yüklendi`);
         } else {
             displayEmptyGallery();
+            console.log('📁 Galeri boş');
         }
+        
     } catch (error) {
         console.error('⚠️ Galeri yüklenemedi:', error);
-        displayOfflineGallery();
+        displayEmptyGallery();
     }
-}
-
-// Offline galeri göster
-function displayOfflineGallery() {
-    const gallery = document.getElementById('gallery');
-    if (!gallery) return;
-    
-    gallery.innerHTML = `
-        <div class="empty-gallery">
-            <i class="fas fa-clock" style="font-size: 48px; margin-bottom: 15px; color: #f59e0b;"></i>
-            <h3>Backend Hazırlanıyor</h3>
-            <p>Render.com'da backend uyandırılıyor. 2-3 dakika bekleyin...</p>
-            <div style="margin-top: 20px;">
-                <button onclick="testBackendConnection()" class="retry-btn">
-                    <i class="fas fa-sync-alt"></i> Tekrar Dene
-                </button>
-            </div>
-        </div>
-    `;
 }
 
 // Galeri görüntüleme
@@ -342,36 +376,34 @@ function displayGallery(files) {
     const gallery = document.getElementById('gallery');
     if (!gallery) return;
     
-    if (!files || files.length === 0) {
-        displayEmptyGallery();
-        return;
-    }
-    
     gallery.innerHTML = files.map(file => {
         const isImage = file.mimeType && file.mimeType.startsWith('image/');
         const isVideo = file.mimeType && file.mimeType.startsWith('video/');
         const fileUrl = file.webViewLink || file.url;
-        const thumbnailUrl = file.thumbnailLink || file.url;
-        const date = formatDate(file.createdTime);
+        const thumbnailUrl = file.thumbnailLink || file.url || fileUrl;
+        const fileName = file.name || 'Bilinmeyen dosya';
+        const fileDate = formatDate(file.createdTime);
         
         return `
-            <div class="gallery-item" onclick="openFileModal('${fileUrl}')">
-                <div class="gallery-item-inner">
+            <div class="gallery-item" onclick="openLightbox('${fileUrl}', '${fileName}', ${isVideo})">
+                <div class="gallery-item-content">
                     ${isImage ? `
-                        <img src="${thumbnailUrl}" alt="${file.name}" loading="lazy">
+                        <img src="${thumbnailUrl}" alt="${fileName}" loading="lazy" />
                     ` : isVideo ? `
                         <div class="video-thumbnail">
-                            <img src="${thumbnailUrl}" alt="${file.name}" loading="lazy">
-                            <i class="fas fa-play-circle"></i>
+                            <img src="${thumbnailUrl}" alt="${fileName}" loading="lazy" />
+                            <div class="play-button">
+                                <i class="fas fa-play"></i>
+                            </div>
                         </div>
                     ` : `
-                        <div class="file-icon">
+                        <div class="file-placeholder">
                             <i class="fas fa-file"></i>
                         </div>
                     `}
                     <div class="gallery-item-info">
-                        <span class="gallery-item-name">${file.name}</span>
-                        <span class="gallery-item-date">${date}</span>
+                        <div class="file-name">${fileName}</div>
+                        <div class="file-date">${fileDate}</div>
                     </div>
                 </div>
             </div>
@@ -379,7 +411,7 @@ function displayGallery(files) {
     }).join('');
 }
 
-// Boş galeri göster
+// Boş galeri
 function displayEmptyGallery() {
     const gallery = document.getElementById('gallery');
     if (!gallery) return;
@@ -387,162 +419,117 @@ function displayEmptyGallery() {
     gallery.innerHTML = `
         <div class="empty-gallery">
             <i class="fas fa-images"></i>
-            <h3>Henüz Fotoğraf Yok</h3>
-            <p>İlk fotoğrafı yükleyen siz olun! Yukarıdaki yükleme bölümünü kullanarak anılarınızı paylaşabilirsiniz.</p>
+            <h3>Henüz fotoğraf yok</h3>
+            <p>İlk fotoğrafı yükleyen siz olun!</p>
         </div>
     `;
 }
 
-// Drag & Drop setup
-function setupDragAndDrop() {
-    const uploadCard = document.querySelector('.upload-card');
-    const fileInput = document.getElementById('fileInput');
+// Lightbox açma
+function openLightbox(url, filename, isVideo = false) {
+    const lightbox = document.createElement('div');
+    lightbox.className = 'lightbox';
+    lightbox.innerHTML = `
+        <div class="lightbox-content">
+            <button class="lightbox-close" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="lightbox-media">
+                ${isVideo ? `
+                    <video controls autoplay>
+                        <source src="${url}" type="video/mp4">
+                        Video yüklenemedi.
+                    </video>
+                ` : `
+                    <img src="${url}" alt="${filename}" />
+                `}
+            </div>
+            <div class="lightbox-info">
+                <h4>${filename}</h4>
+            </div>
+        </div>
+    `;
     
-    if (!uploadCard || !fileInput) return;
+    // Click dışında kapatma
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) {
+            lightbox.remove();
+        }
+    });
+    
+    document.body.appendChild(lightbox);
+}
+
+// Drag & Drop
+function setupDragAndDrop() {
+    const dropZone = document.querySelector('.file-input-label');
+    if (!dropZone) return;
     
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        uploadCard.addEventListener(eventName, preventDefaults, false);
+        dropZone.addEventListener(eventName, preventDefaults, false);
     });
     
     ['dragenter', 'dragover'].forEach(eventName => {
-        uploadCard.addEventListener(eventName, highlight, false);
+        dropZone.addEventListener(eventName, highlight, false);
     });
     
     ['dragleave', 'drop'].forEach(eventName => {
-        uploadCard.addEventListener(eventName, unhighlight, false);
+        dropZone.addEventListener(eventName, unhighlight, false);
     });
     
-    uploadCard.addEventListener('drop', handleDrop, false);
+    dropZone.addEventListener('drop', handleDrop, false);
     
     function preventDefaults(e) {
         e.preventDefault();
         e.stopPropagation();
     }
     
-    function highlight(e) {
-        uploadCard.classList.add('drag-over');
+    function highlight() {
+        dropZone.classList.add('drag-over');
     }
     
-    function unhighlight(e) {
-        uploadCard.classList.remove('drag-over');
+    function unhighlight() {
+        dropZone.classList.remove('drag-over');
     }
     
     function handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        
+        const files = e.dataTransfer.files;
         if (files.length > 0) {
+            const fileInput = document.getElementById('fileInput');
             fileInput.files = files;
-            handleFileSelect({ target: { files } });
+            handleFileSelection({ target: { files } });
         }
     }
 }
 
-// Utility functions
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('tr-TR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-function openFileModal(fileUrl) {
-    // Drive yönlendirmesi yerine lightbox kullan
-    const lightbox = document.createElement('div');
-    lightbox.className = 'lightbox';
+// Mesaj gösterme
+function showMessage(text, type = 'info') {
+    // Eski mesajı kaldır
+    const existing = document.querySelector('.message-toast');
+    if (existing) existing.remove();
     
-    // Cache buster ekle
-    const fileUrlWithCacheBuster = fileUrl.includes('?') ? 
-        fileUrl + '&cb=' + new Date().getTime() : 
-        fileUrl + '?cb=' + new Date().getTime();
-    
-    lightbox.innerHTML = `
-        <div class="lightbox-content">
-            <button class="lightbox-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
-            <img src="${fileUrlWithCacheBuster}" alt="Görüntü" style="max-width: 90%; max-height: 90%; border-radius: 8px;">
+    // Yeni mesaj oluştur
+    const toast = document.createElement('div');
+    toast.className = `message-toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas fa-${getMessageIcon(type)}"></i>
+            <span>${text}</span>
         </div>
     `;
     
-    lightbox.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.9);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-        cursor: pointer;
-    `;
+    document.body.appendChild(toast);
     
-    lightbox.onclick = (e) => {
-        if (e.target === lightbox) lightbox.remove();
-    };
-    
-    document.body.appendChild(lightbox);
-}
-
-// Bildirim göster
-function showNotification(message, type = 'info') {
-    // Existing notification varsa kaldır
-    const existing = document.querySelector('.notification');
-    if (existing) {
-        existing.remove();
-    }
-    
-    // Yeni notification oluştur
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <i class="fas fa-${getNotificationIcon(type)}"></i>
-            <span>${message}</span>
-            <button class="notification-close">&times;</button>
-        </div>
-    `;
-    
-    // Stil ekle
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${getNotificationColor(type)};
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        max-width: 350px;
-        animation: slideInRight 0.3s ease-out;
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Close butonu
-    const closeBtn = notification.querySelector('.notification-close');
-    closeBtn.addEventListener('click', () => {
-        notification.remove();
-    });
-    
-    // Auto remove
+    // Otomatik kaldır
     setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
+        if (toast.parentNode) {
+            toast.remove();
         }
-    }, 8000); // 8 saniye göster
+    }, 5000);
 }
 
-function getNotificationIcon(type) {
+// Mesaj ikonu
+function getMessageIcon(type) {
     const icons = {
         'success': 'check-circle',
         'error': 'exclamation-circle',
@@ -552,226 +539,17 @@ function getNotificationIcon(type) {
     return icons[type] || 'info-circle';
 }
 
-function getNotificationColor(type) {
-    const colors = {
-        'success': 'linear-gradient(135deg, #4ade80, #22c55e)',
-        'error': 'linear-gradient(135deg, #ef4444, #dc2626)',
-        'warning': 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-        'info': 'linear-gradient(135deg, #667eea, #764ba2)'
-    };
-    return colors[type] || colors.info;
+// Tarih formatla
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('tr-TR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
-// CSS animasyonları
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    .drag-over {
-        border: 2px dashed #3B82F6 !important;
-        background-color: rgba(59, 130, 246, 0.1) !important;
-    }
-    
-    .progress-container {
-        text-align: center;
-    }
-    
-    .progress-bar {
-        width: 100%;
-        height: 8px;
-        background-color: #E5E7EB;
-        border-radius: 4px;
-        overflow: hidden;
-        margin-bottom: 1rem;
-    }
-    
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #3B82F6, #10B981);
-        transition: width 0.3s ease;
-    }
-    
-    .progress-text {
-        font-weight: 600;
-        color: #374151;
-    }
-    
-    .empty-gallery {
-        text-align: center;
-        padding: 3rem;
-        color: #6B7280;
-    }
-    
-    .empty-gallery i {
-        font-size: 4rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
-    }
-    
-    .retry-btn {
-        background: #3B82F6;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-    
-    .retry-btn:hover {
-        background: #2563EB;
-        transform: translateY(-2px);
-    }
-    
-    .gallery-item {
-        background: white;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        cursor: pointer;
-        transition: transform 0.2s ease;
-    }
-    
-    .gallery-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-    
-    .gallery-item img {
-        width: 100%;
-        height: 200px;
-        object-fit: cover;
-    }
-    
-    .gallery-item-info {
-        padding: 1rem;
-    }
-    
-    .gallery-item-name {
-        font-weight: 600;
-        color: #374151;
-        display: block;
-        margin-bottom: 0.5rem;
-    }
-    
-    .gallery-item-date {
-        font-size: 0.9rem;
-        color: #6B7280;
-    }
-    
-    .video-thumbnail {
-        position: relative;
-    }
-    
-    .video-thumbnail i {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 3rem;
-        color: white;
-        opacity: 0.8;
-    }
-    
-    .file-icon {
-        height: 200px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #F3F4F6;
-    }
-    
-    .file-icon i {
-        font-size: 3rem;
-        color: #9CA3AF;
-    }
-`;
-document.head.appendChild(style);
-
-// CSS Animation injector
-function injectAnimationCSS() {
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        
-        .notification-content {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .notification-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.2rem;
-            cursor: pointer;
-            margin-left: auto;
-        }
-        
-        .retry-btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 0.7rem 1.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: transform 0.2s ease;
-        }
-        
-        .retry-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .lightbox-content {
-            position: relative;
-        }
-        
-        .lightbox-close {
-            position: absolute;
-            top: -20px;
-            right: -20px;
-            background: rgba(255,255,255,0.9);
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            font-size: 20px;
-            cursor: pointer;
-            z-index: 10001;
-        }
-        
-        .file-input-label small {
-            display: block;
-            margin-top: 0.5rem;
-            color: #6b7280;
-            font-size: 0.9rem;
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-// Sayfa yüklendiğinde CSS'i inject et
-injectAnimationCSS();
-
-console.log('✅ Düğün Fotoğraf Sistemi tamamen yüklendi!'); 
+console.log('✅ Düğün Fotoğraf Sistemi V6.0.0 yüklendi!'); 
