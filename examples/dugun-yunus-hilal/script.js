@@ -1,11 +1,15 @@
-// 📸 Basit ve Güvenilir Düğün Fotoğraf Sistemi - Multiple File Support
+// 📸 iOS Uyumlu Düğün Fotoğraf Sistemi - Multiple File Support
 var API_BASE_URL = 'https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com';
 var selectedFiles = [];
 var isUploading = false;
+var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-// Sistem başlatma - basit ve etkili
+// Sistem başlatma - iOS uyumlu
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('📱 Sistem başlatılıyor...');
+    console.log('📱 iOS Uyumlu Sistem başlatılıyor...');
+    console.log('🔍 Platform:', isIOS ? 'iOS' : isMobile ? 'Mobile' : 'Desktop');
+
     setTimeout(function () {
         initializeSystem();
     }, 100);
@@ -26,8 +30,8 @@ function initializeSystem() {
         // Loading screen'i gizle
         hideLoadingScreen();
 
-        // File input event'leri
-        setupFileInput();
+        // iOS özel ayarları
+        setupIOSFileInput();
 
         // Form submit
         uploadForm.addEventListener('submit', handleUpload);
@@ -36,7 +40,10 @@ function initializeSystem() {
         testBackend();
 
         console.log('✅ Sistem hazır!');
-        showMessage('📱 Sistem hazır! Fotoğraflarınızı seçin.', 'success');
+        var message = isIOS ?
+            '📱 iOS sistem hazır! Fotoğraflarınızı seçin.' :
+            '📱 Sistem hazır! Fotoğraflarınızı seçin.';
+        showMessage(message, 'success');
 
     } catch (error) {
         console.error('❌ Sistem başlatma hatası:', error);
@@ -51,28 +58,109 @@ function hideLoadingScreen() {
     }
 }
 
-function setupFileInput() {
+function setupIOSFileInput() {
     var fileInput = document.getElementById('fileInput');
     var label = document.querySelector('.file-input-label');
 
     if (!fileInput || !label) return;
 
-    // Multiple file selection aktif et
-    fileInput.setAttribute('multiple', 'multiple');
+    // iOS için özel multiple ayarları
+    if (isIOS) {
+        // iOS'da multiple attribute bazen sorun çıkarır, önce test edelim
+        fileInput.setAttribute('multiple', 'multiple');
+        fileInput.setAttribute('accept', 'image/*,video/*');
 
-    // File input change - multiple files
+        // iOS için özel style ayarları
+        fileInput.style.position = 'absolute';
+        fileInput.style.left = '-9999px';
+        fileInput.style.opacity = '0';
+        fileInput.style.pointerEvents = 'none';
+
+        console.log('📱 iOS file input ayarlandı');
+    } else {
+        // Diğer platformlar için normal ayar
+        fileInput.setAttribute('multiple', 'multiple');
+        fileInput.setAttribute('accept', 'image/*,video/*');
+    }
+
+    // File input change - iOS uyumlu
     fileInput.addEventListener('change', function (e) {
+        console.log('📁 File input change triggered:', e.target.files.length, 'files');
+
+        // iOS'da bazen files null olabiliyor
+        if (!e.target.files || e.target.files.length === 0) {
+            console.warn('⚠️ Dosya seçimi boş');
+            return;
+        }
+
         handleMultipleFileSelection(e.target.files);
     });
 
-    // Label click
+    // Label click - iOS uyumlu
     label.addEventListener('click', function (e) {
-        if (!isUploading) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (isUploading) {
+            showMessage('⏳ Yükleme devam ediyor...', 'warning');
+            return;
+        }
+
+        console.log('🖱️ Label clicked - opening file picker');
+
+        // iOS için özel file picker açma
+        if (isIOS) {
+            // iOS'da input'u görünür yap, click et, sonra gizle
+            fileInput.style.position = 'static';
+            fileInput.style.left = 'auto';
+            fileInput.style.opacity = '1';
+            fileInput.style.pointerEvents = 'auto';
+
+            setTimeout(function () {
+                fileInput.click();
+
+                setTimeout(function () {
+                    fileInput.style.position = 'absolute';
+                    fileInput.style.left = '-9999px';
+                    fileInput.style.opacity = '0';
+                    fileInput.style.pointerEvents = 'none';
+                }, 100);
+            }, 50);
+        } else {
             fileInput.click();
         }
     });
 
-    // Basit drag & drop - multiple files
+    // Touch events için iOS optimizasyonu
+    if (isIOS || isMobile) {
+        label.addEventListener('touchstart', function (e) {
+            e.preventDefault();
+            label.style.transform = 'scale(0.98)';
+        });
+
+        label.addEventListener('touchend', function (e) {
+            e.preventDefault();
+            label.style.transform = 'scale(1)';
+
+            // Touch sonrası click trigger
+            setTimeout(function () {
+                if (!isUploading) {
+                    var clickEvent = new Event('click', { bubbles: true });
+                    label.dispatchEvent(clickEvent);
+                }
+            }, 100);
+        });
+    }
+
+    // Drag & Drop - mobile'da disable
+    if (!isMobile) {
+        setupDragDrop(label);
+    } else {
+        console.log('📱 Mobile detected - drag&drop disabled');
+    }
+}
+
+function setupDragDrop(label) {
     label.addEventListener('dragover', function (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -100,10 +188,17 @@ function setupFileInput() {
 function handleMultipleFileSelection(files) {
     if (!files || files.length === 0) {
         console.log('❌ Dosya seçilmedi');
+        showMessage('❌ Dosya seçilmedi', 'error');
         return;
     }
 
     console.log('📁 ' + files.length + ' dosya seçildi');
+
+    // iOS'da FileList'i Array'e çevir
+    var fileArray = [];
+    for (var i = 0; i < files.length; i++) {
+        fileArray.push(files[i]);
+    }
 
     // Mevcut seçimi temizle
     selectedFiles = [];
@@ -112,12 +207,16 @@ function handleMultipleFileSelection(files) {
     var validFiles = [];
     var invalidCount = 0;
 
-    for (var i = 0; i < files.length; i++) {
-        var file = files[i];
+    for (var j = 0; j < fileArray.length; j++) {
+        var file = fileArray[j];
+        console.log('🔍 Kontrol ediliyor:', file.name, file.type, file.size);
+
         if (validateFile(file)) {
             validFiles.push(file);
+            console.log('✅ Geçerli:', file.name);
         } else {
             invalidCount++;
+            console.log('❌ Geçersiz:', file.name);
         }
     }
 
@@ -133,6 +232,12 @@ function handleMultipleFileSelection(files) {
         if (invalidCount > 0) {
             message += ' (' + invalidCount + ' dosya geçersiz)';
         }
+
+        // iOS için özel mesaj
+        if (isIOS && selectedFiles.length === 1) {
+            message = '✅ ' + selectedFiles[0].name + ' seçildi!';
+        }
+
         showMessage(message, 'success');
     } else {
         showMessage('❌ Hiç geçerli dosya seçilmedi!', 'error');
@@ -144,38 +249,53 @@ function validateFile(file) {
     // Boyut kontrolü - 50MB
     var maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
-        console.warn('❌ Büyük dosya:', file.name);
+        console.warn('❌ Büyük dosya:', file.name, 'Size:', file.size);
         return false;
     }
 
-    // Tip kontrolü - basit ve etkili
+    // Minimum boyut kontrolü (1KB)
+    if (file.size < 1024) {
+        console.warn('❌ Çok küçük dosya:', file.name, 'Size:', file.size);
+        return false;
+    }
+
+    // Tip kontrolü - iOS uyumlu
     var fileName = file.name.toLowerCase();
-    var validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.avi', '.heic'];
-    var isValid = false;
+    var validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.mp4', '.mov', '.avi'];
+    var isValidExtension = false;
 
     for (var i = 0; i < validExtensions.length; i++) {
         if (fileName.endsWith(validExtensions[i])) {
-            isValid = true;
+            isValidExtension = true;
             break;
         }
     }
 
-    // MIME type de kontrol et
-    if (!isValid && file.type) {
-        var validTypes = ['image/', 'video/'];
-        for (var j = 0; j < validTypes.length; j++) {
-            if (file.type.startsWith(validTypes[j])) {
-                isValid = true;
+    // MIME type kontrolü - iOS'da daha önemli
+    var isValidMime = false;
+    if (file.type) {
+        var validMimeTypes = ['image/', 'video/'];
+        for (var j = 0; j < validMimeTypes.length; j++) {
+            if (file.type.startsWith(validMimeTypes[j])) {
+                isValidMime = true;
                 break;
             }
         }
     }
 
+    // iOS'da HEIC dosyaları type olarak boş gelebilir
+    if (isIOS && (fileName.endsWith('.heic') || fileName.endsWith('.heif'))) {
+        isValidMime = true;
+    }
+
+    var isValid = isValidExtension || isValidMime;
+
     if (!isValid) {
-        console.warn('❌ Geçersiz format:', file.name);
+        console.warn('❌ Geçersiz format:', file.name, 'Type:', file.type);
         return false;
     }
 
+    console.log('✅ Dosya geçerli:', file.name, 'Type:', file.type, 'Size:', file.size);
     return true;
 }
 
@@ -184,7 +304,14 @@ function updateMultipleFileLabel() {
     if (label && selectedFiles.length > 0) {
         if (selectedFiles.length === 1) {
             var fileSize = (selectedFiles[0].size / 1024 / 1024).toFixed(1);
-            label.textContent = '✓ ' + selectedFiles[0].name + ' (' + fileSize + ' MB)';
+            var fileName = selectedFiles[0].name;
+
+            // iOS'da uzun isimler için kısaltma
+            if (isIOS && fileName.length > 20) {
+                fileName = fileName.substring(0, 15) + '...' + fileName.substring(fileName.lastIndexOf('.'));
+            }
+
+            label.textContent = '✓ ' + fileName + ' (' + fileSize + ' MB)';
         } else {
             var totalSize = 0;
             for (var i = 0; i < selectedFiles.length; i++) {
@@ -259,6 +386,17 @@ function handleUpload(event) {
 
     if (!selectedFiles || selectedFiles.length === 0) {
         showMessage('📁 Önce dosya seçin!', 'error');
+
+        // iOS'da file picker'ı tekrar aç
+        if (isIOS) {
+            setTimeout(function () {
+                var label = document.querySelector('.file-input-label');
+                if (label) {
+                    var clickEvent = new Event('click', { bubbles: true });
+                    label.dispatchEvent(clickEvent);
+                }
+            }, 1000);
+        }
         return;
     }
 
@@ -292,9 +430,11 @@ function uploadFilesSequentially(currentIndex, successFiles, errorFiles) {
 
     updateProgress(progress, (currentIndex + 1) + '/' + selectedFiles.length + ': ' + currentFile.name);
 
-    // FormData hazırla
+    // FormData hazırla - iOS uyumlu
     var formData = new FormData();
     formData.append('file', currentFile);
+
+    console.log('📤 Yükleniyor:', currentFile.name, 'Size:', currentFile.size);
 
     // XMLHttpRequest ile upload
     var xhr = new XMLHttpRequest();
@@ -340,8 +480,8 @@ function uploadFilesSequentially(currentIndex, successFiles, errorFiles) {
         uploadFilesSequentially(currentIndex + 1, successFiles, errorFiles);
     });
 
-    // Timeout handler
-    xhr.timeout = 300000; // 5 dakika
+    // Timeout handler - iOS için daha uzun
+    xhr.timeout = isIOS ? 600000 : 300000; // iOS: 10 dakika, Diğer: 5 dakika
     xhr.addEventListener('timeout', function () {
         errorFiles.push({
             file: currentFile,
@@ -415,7 +555,10 @@ function resetForm() {
     // Label'i sıfırla
     var label = document.querySelector('.file-input-label span');
     if (label) {
-        label.textContent = 'Fotoğraf veya video seçin (Birden fazla seçebilirsiniz)';
+        var labelText = isIOS ?
+            'Fotoğraf veya video seçin' :
+            'Fotoğraf veya video seçin (Birden fazla seçebilirsiniz)';
+        label.textContent = labelText;
         label.parentElement.classList.remove('file-selected');
     }
 
@@ -516,4 +659,4 @@ function getMessageIcon(type) {
     return icons[type] || 'info-circle';
 }
 
-console.log('✅ Multiple File Upload Düğün Sistemi yüklendi!'); 
+console.log('✅ iOS Uyumlu Multiple File Upload Düğün Sistemi yüklendi!'); 
