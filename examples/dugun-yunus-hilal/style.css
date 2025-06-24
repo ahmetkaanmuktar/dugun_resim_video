@@ -1,7 +1,9 @@
 /* 📸 Modern Düğün Fotoğraf Sistemi - Çapraz Platform CSS */
 
 /* Temel Reset - Tüm Tarayıcılar */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -140,7 +142,8 @@ body::before {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    color: #8b5cf6; /* Fallback for older browsers */
+    color: #8b5cf6;
+    /* Fallback for older browsers */
     margin-bottom: 1rem;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -289,7 +292,11 @@ body::before {
 }
 
 #fileInput {
-    display: none;
+    display: none !important;
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
 /* Upload Button */
@@ -544,7 +551,7 @@ body::before {
     transition: opacity 0.3s ease;
 }
 
-.upload-step.active + .upload-arrow {
+.upload-step.active+.upload-arrow {
     opacity: 1;
 }
 
@@ -700,23 +707,43 @@ body::before {
 
 /* Animations */
 @-webkit-keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @-moz-keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @-o-keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @-webkit-keyframes slideUp {
@@ -724,6 +751,7 @@ body::before {
         -webkit-transform: translateY(30px);
         opacity: 0;
     }
+
     to {
         -webkit-transform: translateY(0);
         opacity: 1;
@@ -735,6 +763,7 @@ body::before {
         -moz-transform: translateY(30px);
         opacity: 0;
     }
+
     to {
         -moz-transform: translateY(0);
         opacity: 1;
@@ -746,6 +775,7 @@ body::before {
         -o-transform: translateY(30px);
         opacity: 0;
     }
+
     to {
         -o-transform: translateY(0);
         opacity: 1;
@@ -757,6 +787,7 @@ body::before {
         transform: translateY(30px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -768,6 +799,7 @@ body::before {
         -webkit-transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         -webkit-transform: translateX(0);
         opacity: 1;
@@ -779,6 +811,7 @@ body::before {
         -moz-transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         -moz-transform: translateX(0);
         opacity: 1;
@@ -790,6 +823,7 @@ body::before {
         -o-transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         -o-transform: translateX(0);
         opacity: 1;
@@ -801,6 +835,7 @@ body::before {
         transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -808,48 +843,76 @@ body::before {
 }
 
 @-webkit-keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
+
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
         -webkit-transform: translateY(0);
     }
+
     40% {
         -webkit-transform: translateY(-10px);
     }
+
     60% {
         -webkit-transform: translateY(-5px);
     }
 }
 
 @-moz-keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
+
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
         -moz-transform: translateY(0);
     }
+
     40% {
         -moz-transform: translateY(-10px);
     }
+
     60% {
         -moz-transform: translateY(-5px);
     }
 }
 
 @-o-keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
+
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
         -o-transform: translateY(0);
     }
+
     40% {
         -o-transform: translateY(-10px);
     }
+
     60% {
         -o-transform: translateY(-5px);
     }
 }
 
 @keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
+
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
         transform: translateY(0);
     }
+
     40% {
         transform: translateY(-10px);
     }
+
     60% {
         transform: translateY(-5px);
     }
@@ -859,9 +922,11 @@ body::before {
     0% {
         -webkit-transform: scale(1);
     }
+
     50% {
         -webkit-transform: scale(1.1);
     }
+
     100% {
         -webkit-transform: scale(1);
     }
@@ -871,9 +936,11 @@ body::before {
     0% {
         -moz-transform: scale(1);
     }
+
     50% {
         -moz-transform: scale(1.1);
     }
+
     100% {
         -moz-transform: scale(1);
     }
@@ -883,9 +950,11 @@ body::before {
     0% {
         -o-transform: scale(1);
     }
+
     50% {
         -o-transform: scale(1.1);
     }
+
     100% {
         -o-transform: scale(1);
     }
@@ -895,9 +964,11 @@ body::before {
     0% {
         transform: scale(1);
     }
+
     50% {
         transform: scale(1.1);
     }
+
     100% {
         transform: scale(1);
     }
@@ -907,6 +978,7 @@ body::before {
     0% {
         background-position: 0 0;
     }
+
     100% {
         background-position: 20px 0;
     }
@@ -916,6 +988,7 @@ body::before {
     0% {
         background-position: 0 0;
     }
+
     100% {
         background-position: 20px 0;
     }
@@ -925,6 +998,7 @@ body::before {
     0% {
         background-position: 0 0;
     }
+
     100% {
         background-position: 20px 0;
     }
@@ -934,42 +1008,55 @@ body::before {
     0% {
         background-position: 0 0;
     }
+
     100% {
         background-position: 20px 0;
     }
 }
 
 @-webkit-keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
         -webkit-transform: translateY(0px);
     }
+
     50% {
         -webkit-transform: translateY(-20px);
     }
 }
 
 @-moz-keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
         -moz-transform: translateY(0px);
     }
+
     50% {
         -moz-transform: translateY(-20px);
     }
 }
 
 @-o-keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
         -o-transform: translateY(0px);
     }
+
     50% {
         -o-transform: translateY(-20px);
     }
 }
 
 @keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translateY(0px);
     }
+
     50% {
         transform: translateY(-20px);
     }
@@ -980,7 +1067,7 @@ body::before {
     .container {
         padding: 1rem;
     }
-    
+
     .main-card {
         padding: 2rem 1.5rem;
         margin: 1rem;
@@ -988,70 +1075,71 @@ body::before {
         -moz-border-radius: 16px;
         border-radius: 16px;
     }
-    
+
     .header h1 {
         font-size: 2rem;
     }
-    
+
     .header .emoji {
         font-size: 2.5rem;
     }
-    
+
     .file-input-label {
         padding: 2rem 1rem;
         min-height: 150px;
     }
-    
+
     .file-input-label i {
         font-size: 2.5rem;
     }
-    
+
     .file-input-label span {
         font-size: 1rem;
     }
-    
+
     .upload-btn {
         padding: 0.875rem 1.5rem;
         font-size: 1rem;
-        min-height: 44px; /* Touch target */
+        min-height: 44px;
+        /* Touch target */
     }
-    
+
     .modal-content {
         padding: 2rem 1.5rem;
         margin: 1rem;
     }
-    
+
     .modal-header i {
         font-size: 2.5rem;
     }
-    
+
     .modal-header h3 {
         font-size: 1.25rem;
     }
-    
+
     .upload-animation {
         gap: 0.5rem;
     }
-    
+
     .upload-step i {
         font-size: 1.25rem;
     }
-    
+
     .upload-step span {
         font-size: 0.75rem;
     }
-    
+
     .message-toast {
         top: 1rem;
         right: 1rem;
         left: 1rem;
         max-width: none;
     }
-    
+
     .footer-content {
         gap: 0.75rem;
     }
-    
+
     .social-links {
         -webkit-box-orient: vertical;
         -webkit-box-direction: normal;
@@ -1063,7 +1151,7 @@ body::before {
         gap: 0.5rem;
         width: 100%;
     }
-    
+
     .social-link {
         -webkit-box-pack: center;
         -webkit-justify-content: center;
@@ -1071,7 +1159,8 @@ body::before {
         -ms-flex-pack: center;
         justify-content: center;
         padding: 0.75rem 1rem;
-        min-height: 44px; /* Touch target */
+        min-height: 44px;
+        /* Touch target */
     }
 }
 
@@ -1080,7 +1169,7 @@ body::before {
         padding: 0.5rem;
         min-height: calc(100vh - 1rem);
     }
-    
+
     .main-card {
         padding: 1.5rem 1rem;
         margin: 0.5rem;
@@ -1088,43 +1177,43 @@ body::before {
         -moz-border-radius: 12px;
         border-radius: 12px;
     }
-    
+
     .header h1 {
         font-size: 1.75rem;
     }
-    
+
     .header p {
         font-size: 1rem;
     }
-    
+
     .file-input-label {
         padding: 1.5rem 0.75rem;
         min-height: 120px;
     }
-    
+
     .file-input-label i {
         font-size: 2rem;
     }
-    
+
     .file-input-label span {
         font-size: 0.9rem;
     }
-    
+
     .upload-btn {
         padding: 0.75rem 1rem;
         font-size: 0.9rem;
     }
-    
+
     .modal-content {
         padding: 1.5rem 1rem;
         margin: 0.5rem;
         max-width: calc(100% - 1rem);
     }
-    
+
     .progress-text {
         font-size: 1rem;
     }
-    
+
     .upload-animation {
         -webkit-box-orient: vertical;
         -webkit-box-direction: normal;
@@ -1135,7 +1224,7 @@ body::before {
         flex-direction: column;
         gap: 1rem;
     }
-    
+
     .upload-arrow {
         -webkit-transform: rotate(90deg);
         -moz-transform: rotate(90deg);
@@ -1156,31 +1245,31 @@ body::before {
         justify-content: flex-start;
         padding-top: 1rem;
     }
-    
+
     .main-card {
         margin: 0.5rem 0;
     }
-    
+
     .header {
         margin-bottom: 1.5rem;
     }
-    
+
     .header .emoji {
         font-size: 2rem;
         margin-bottom: 0.5rem;
     }
-    
+
     .upload-section {
         margin-bottom: 2rem;
     }
-    
+
     .file-input-label {
         min-height: 100px;
         padding: 1rem;
     }
-    
+
     .modal-content {
         max-height: 90vh;
         overflow-y: auto;
     }
-} 
+}
