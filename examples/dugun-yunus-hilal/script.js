@@ -26,7 +26,7 @@ function setupFileInput() {
     var fileInput = document.getElementById('fileInput');
     var label = document.querySelector('.file-input-label');
     if (!fileInput || !label) return;
-    
+
     fileInput.setAttribute('multiple', 'multiple');
     fileInput.setAttribute('accept', 'image/*,video/*');
     fileInput.style.position = 'absolute';
@@ -59,7 +59,7 @@ function setupFileInput() {
             label.style.opacity = '0.9';
         }, { passive: true });
         label.addEventListener('touchend', function (e) {
-            setTimeout(function() {
+            setTimeout(function () {
                 label.style.transform = 'scale(1)';
                 label.style.opacity = '1';
             }, 100);
@@ -208,7 +208,7 @@ function uploadSingleFile(file, fileIndex, totalFiles) {
         xhr.onload = () => resolve({ file: file, success: xhr.status >= 200 && xhr.status < 300 });
         xhr.onerror = () => resolve({ file: file, success: false });
         xhr.timeout = 30000;
-        xhr.open('POST', API_BASE_URL + '/upload', true);
+        xhr.open('POST', API_BASE_URL + '/api/upload', true);
         xhr.send(formData);
     });
 }
