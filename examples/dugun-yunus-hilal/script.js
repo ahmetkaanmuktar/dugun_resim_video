@@ -300,10 +300,14 @@ function isFileAlreadySelected(newFile) {
 function validateFile(file) {
     console.log('🔍 Dosya doğrulanıyor:', file.name, 'Boyut:', file.size, 'Tip:', file.type);
 
-    // Boyut kontrolü - 50MB
-    var maxSize = 50 * 1024 * 1024;
+    // Video dosyaları için özel kontroller
+    var isVideo = file.type.startsWith('video/') || file.name.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/);
+
+    // Boyut kontrolü - Video için 100MB, resim için 50MB
+    var maxSize = isVideo ? 100 * 1024 * 1024 : 50 * 1024 * 1024;
     if (file.size > maxSize) {
-        console.warn('❌ Büyük dosya:', file.name, 'Size:', file.size);
+        console.warn('❌ Büyük dosya:', file.name, 'Size:', file.size, 'Max:', maxSize);
+        showMessage('❌ Dosya çok büyük! ' + (isVideo ? 'Video max 100MB' : 'Resim max 50MB'), 'error');
         return false;
     }
 
@@ -315,7 +319,7 @@ function validateFile(file) {
 
     // Format kontrolü
     var fileName = file.name.toLowerCase();
-    var validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.mp4', '.mov', '.avi'];
+    var validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.mp4', '.mov', '.avi', '.mkv', '.webm'];
     var isValidExtension = false;
 
     for (var i = 0; i < validExtensions.length; i++) {
@@ -348,8 +352,14 @@ function validateFile(file) {
         isValidMime = true;
     }
 
+    // Video dosyaları için ek uyarı
+    if (isVideo && file.size > 20 * 1024 * 1024) {
+        console.log('⚠️ Büyük video dosyası:', file.name, (file.size / 1024 / 1024).toFixed(1) + 'MB');
+        showMessage('📹 Büyük video dosyası, yükleme biraz uzun sürebilir...', 'info');
+    }
+
     var result = isValidExtension || isValidMime;
-    console.log('✅ Doğrulama sonucu:', result, '(Ext:', isValidExtension, 'Mime:', isValidMime, ')');
+    console.log('✅ Doğrulama sonucu:', result, '(Ext:', isValidExtension, 'Mime:', isValidMime, 'Video:', isVideo, ')');
 
     return result;
 }
@@ -448,11 +458,25 @@ function createThumbnail(file) {
         };
         reader.readAsDataURL(file);
     } else {
-        // Video thumbnail'i
+        // Video thumbnail'i - Video tipine göre özel ikon
+        var videoIcon = 'fas fa-play-circle';
+        var videoText = 'VIDEO';
+
+        if (file.name.toLowerCase().endsWith('.mp4')) {
+            videoIcon = 'fas fa-video';
+            videoText = 'MP4';
+        } else if (file.name.toLowerCase().endsWith('.mov')) {
+            videoIcon = 'fas fa-film';
+            videoText = 'MOV';
+        } else if (file.name.toLowerCase().endsWith('.avi')) {
+            videoIcon = 'fas fa-file-video';
+            videoText = 'AVI';
+        }
+
         thumbnailDiv.innerHTML =
             '<div class="thumbnail-image video-thumbnail">' +
-            '<i class="fas fa-play-circle"></i>' +
-            '<div class="video-overlay">VIDEO</div>' +
+            '<i class="' + videoIcon + '"></i>' +
+            '<div class="video-overlay">' + videoText + '</div>' +
             '<button class="remove-btn" onclick="removeFile(\'' + file.uniqueId + '\')">' +
             '<i class="fas fa-times"></i>' +
             '</button>' +
@@ -568,7 +592,9 @@ function testBackend() {
     xhr.onload = function () {
         if (xhr.status >= 200 && xhr.status < 300) {
             console.log('✅ Backend çalışıyor');
-            showMessage('🌐 Sunucu hazır - Hızlı yükleme aktif!', 'info');
+            console.log('📹 Video desteği: Aktif (MP4, MOV, AVI, MKV, WEBM - Max 100MB)');
+            console.log('📸 Resim desteği: Aktif (JPG, PNG, GIF, WEBP, HEIC - Max 50MB)');
+            showMessage('🌐 Sunucu hazır - Video ve resim yükleme aktif!', 'info');
         } else {
             console.warn('⚠️ Backend yanıt vermiyor:', xhr.status);
             showMessage('⚠️ Sunucu bağlantısında sorun var, yine de deneyin.', 'warning');
@@ -666,6 +692,11 @@ function uploadFilesParallel(filesToUpload) {
 
 function uploadSingleFile(file, fileIndex, totalFiles) {
     return new Promise(function (resolve, reject) {
+        console.log('🚀 Upload başlatılıyor:', file.name, 'Boyut:', (file.size / 1024 / 1024).toFixed(1) + 'MB', 'Tip:', file.type);
+
+        // Video dosyası kontrolü
+        var isVideo = file.type.startsWith('video/') || file.name.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/);
+
         // Kullanıcı adını al
         var uploaderName = document.getElementById('uploaderName');
         var userName = uploaderName ? uploaderName.value.trim() : '';
@@ -678,6 +709,8 @@ function uploadSingleFile(file, fileIndex, totalFiles) {
             formData.append('uploader_name', userName);
         }
 
+        console.log('📡 FormData hazırlandı. Video:', isVideo, 'User:', userName || 'Anonim');
+
         var xhr = new XMLHttpRequest();
 
         // Progress tracking
@@ -685,7 +718,9 @@ function uploadSingleFile(file, fileIndex, totalFiles) {
             if (e.lengthComputable) {
                 var fileProgress = Math.round((e.loaded / e.total) * 100);
                 var overallProgress = 10 + Math.round(((fileIndex - 1) / totalFiles) * 80) + Math.round((fileProgress / totalFiles) * 80 / 100);
-                updateProgress(overallProgress, 'Yükleniyor: ' + file.name + ' (' + fileProgress + '%)');
+                var fileType = isVideo ? '📹' : '📸';
+                updateProgress(overallProgress, fileType + ' Yükleniyor: ' + file.name + ' (' + fileProgress + '%)');
+                console.log('📊 Progress:', file.name, fileProgress + '%');
             }
         });
 
@@ -696,7 +731,7 @@ function uploadSingleFile(file, fileIndex, totalFiles) {
             if (xhr.status === 200) {
                 try {
                     var response = JSON.parse(xhr.responseText);
-                    console.log('✅ Upload başarılı:', file.name);
+                    console.log('✅ Upload başarılı:', file.name, 'Response:', response);
                     resolve({
                         success: true,
                         file: file,
@@ -716,14 +751,19 @@ function uploadSingleFile(file, fileIndex, totalFiles) {
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
                     console.error('❌ Server error details:', errorResponse);
+                    reject({
+                        success: false,
+                        file: file,
+                        error: errorResponse.error || ('Sunucu hatası: ' + xhr.status)
+                    });
                 } catch (e) {
                     console.error('❌ Cannot parse error response');
+                    reject({
+                        success: false,
+                        file: file,
+                        error: 'Sunucu hatası: ' + xhr.status + ' - ' + xhr.responseText
+                    });
                 }
-                reject({
-                    success: false,
-                    file: file,
-                    error: 'Sunucu hatası: ' + xhr.status + ' - ' + xhr.responseText
-                });
             }
         });
 
@@ -736,17 +776,18 @@ function uploadSingleFile(file, fileIndex, totalFiles) {
             });
         });
 
-        // Ultra hızlı timeout
-        xhr.timeout = 30000; // 30 saniye
+        // Video dosyaları için daha uzun timeout
+        xhr.timeout = isVideo ? 120000 : 30000; // Video: 2 dakika, Resim: 30 saniye
         xhr.addEventListener('timeout', function () {
-            console.error('❌ Timeout:', file.name);
+            console.error('❌ Timeout:', file.name, 'Süre:', isVideo ? '2 dakika' : '30 saniye');
             reject({
                 success: false,
                 file: file,
-                error: 'Yükleme çok uzun sürdü'
+                error: 'Yükleme çok uzun sürdü (' + (isVideo ? '2 dakika' : '30 saniye') + ' aşıldı)'
             });
         });
 
+        console.log('📡 XHR başlatılıyor. Timeout:', isVideo ? '2 dakika' : '30 saniye');
         xhr.open('POST', API_BASE_URL + '/api/upload');
         xhr.send(formData);
     });

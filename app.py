@@ -17,8 +17,11 @@ CORS(app,
 
 # Render için environment variable'ları
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi', 'webp'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi', 'webp', 'mkv', 'webm', 'heic', 'heif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Maximum file size: 100MB for videos, 50MB for images
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -155,7 +158,7 @@ def upload_file():
         print(f"User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
         print(f"Request files: {request.files}")
         print(f"Request form: {request.form}")
-        print(f"Request headers: {dict(request.headers)}")
+        print(f"Content-Length: {request.headers.get('Content-Length', 'Unknown')}")
         
         if 'file' not in request.files:
             print("Hata: 'file' anahtarı bulunamadı")
@@ -165,10 +168,28 @@ def upload_file():
         
         file = request.files['file']
         uploader_name = request.form.get('uploader_name', '').strip()
+        
+        # File size calculation
+        file.seek(0, 2)  # Seek to end
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
+        
+        # Video file detection
+        is_video = (file.content_type and file.content_type.startswith('video/')) or \
+                   (file.filename and any(file.filename.lower().endswith(ext) for ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm']))
+        
         print(f"Dosya adı: {file.filename}")
         print(f"Content-Type: {file.content_type}")
-        print(f"Dosya boyutu: {file.content_length if hasattr(file, 'content_length') else 'Bilinmiyor'}")
+        print(f"Dosya boyutu: {file_size} bytes ({file_size / 1024 / 1024:.1f} MB)")
+        print(f"Video dosyası: {is_video}")
         print(f"Yükleyen: {uploader_name if uploader_name else 'Anonim'}")
+        
+        # File size validation
+        max_size = 100 * 1024 * 1024 if is_video else 50 * 1024 * 1024  # 100MB for video, 50MB for image
+        if file_size > max_size:
+            max_mb = 100 if is_video else 50
+            print(f"Hata: Dosya çok büyük: {file_size} > {max_size}")
+            return jsonify({'error': f'Dosya çok büyük! {"Video" if is_video else "Resim"} dosyaları max {max_mb}MB olabilir.'}), 400
         
         if not file or file.filename == '':
             print("Hata: Dosya adı boş veya dosya yok")
@@ -188,9 +209,16 @@ def upload_file():
                 unique_filename = f"anonim_{name}_{timestamp}{ext}"
             
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-            print(f"Dosya kaydediliyor: {filepath}")
+            print(f"{'📹 Video' if is_video else '📸 Resim'} dosyası kaydediliyor: {filepath}")
             file.save(filepath)
+            
+            # Saved file size verification
+            saved_size = os.path.getsize(filepath)
             print(f"Dosya başarıyla kaydedildi: {filepath}")
+            print(f"Kaydedilen boyut: {saved_size} bytes ({saved_size / 1024 / 1024:.1f} MB)")
+            
+            if saved_size != file_size:
+                print(f"⚠️ Boyut uyuşmazlığı: Beklenen {file_size}, Kaydedilen {saved_size}")
             
             # Drive'a yedekleme (opsiyonel - hata olursa da devam eder)
             print(f"Drive'a yedekleme başlatılıyor...")
@@ -210,10 +238,12 @@ def upload_file():
             return jsonify(result), 200
         else:
             print(f"Hata: Geçersiz dosya formatı. Dosya: {file.filename}")
-            return jsonify({'error': 'Geçersiz dosya formatı. Desteklenen: JPG, PNG, GIF, MP4, MOV, AVI'}), 400
+            return jsonify({'error': 'Geçersiz dosya formatı. Desteklenen: JPG, PNG, GIF, MP4, MOV, AVI, MKV, WEBM, HEIC, HEIF'}), 400
     
     except Exception as e:
         print(f"Upload genel hata: {e}")
+        import traceback
+        print(f"Stack trace: {traceback.format_exc()}")
         return jsonify({'error': f'Sunucu hatası: {str(e)}'}), 500
 
 @app.route('/api/gallery', methods=['GET'])
