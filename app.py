@@ -717,6 +717,744 @@ def security_dashboard():
     </html>
     '''
 
+@app.route('/wedding-owner/dashboard', methods=['GET'])
+def wedding_owner_dashboard():
+    """Düğün sahibi için özel galeri dashboard"""
+    return '''
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>💒 Düğün Galeri Dashboard</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh; padding: 20px; color: white;
+            }
+            .container { max-width: 1400px; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { font-size: 2.5rem; margin-bottom: 10px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+            .header p { font-size: 1.2rem; opacity: 0.9; }
+            
+            /* Login Section */
+            .login-section { 
+                background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); 
+                border-radius: 20px; padding: 40px; margin-bottom: 30px; 
+                border: 1px solid rgba(255,255,255,0.2); max-width: 500px; margin: 0 auto 30px;
+            }
+            .login-input { 
+                width: 100%; padding: 15px 20px; border: 2px solid rgba(255,255,255,0.3); 
+                border-radius: 12px; background: rgba(255,255,255,0.1); color: white; 
+                font-size: 1.1rem; margin-bottom: 20px; outline: none;
+            }
+            .login-input::placeholder { color: rgba(255,255,255,0.7); }
+            .login-input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.3); }
+            .login-btn { 
+                width: 100%; background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                color: white; border: none; padding: 15px; border-radius: 12px; 
+                font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s;
+            }
+            .login-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(16,185,129,0.4); }
+            
+            /* Dashboard */
+            .dashboard { display: none; }
+            .stats-grid { 
+                display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+                gap: 20px; margin-bottom: 30px; 
+            }
+            .stat-card { 
+                background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); 
+                border-radius: 16px; padding: 25px; text-align: center; 
+                border: 1px solid rgba(255,255,255,0.2); transition: all 0.3s;
+            }
+            .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+            .stat-card i { font-size: 2.5rem; margin-bottom: 15px; opacity: 0.8; }
+            .stat-number { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+            .stat-label { font-size: 1rem; opacity: 0.8; }
+            
+            /* Gallery */
+            .gallery-section { 
+                background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); 
+                border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.2); 
+            }
+            .gallery-header { 
+                display: flex; justify-content: space-between; align-items: center; 
+                margin-bottom: 25px; flex-wrap: wrap; gap: 15px;
+            }
+            .search-box { 
+                padding: 12px 20px; border: 2px solid rgba(255,255,255,0.3); 
+                border-radius: 10px; background: rgba(255,255,255,0.1); 
+                color: white; width: 300px; outline: none;
+            }
+            .search-box::placeholder { color: rgba(255,255,255,0.7); }
+            .filter-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+            .filter-btn { 
+                padding: 10px 20px; border: 2px solid rgba(255,255,255,0.3); 
+                border-radius: 8px; background: rgba(255,255,255,0.1); 
+                color: white; cursor: pointer; transition: all 0.3s; font-size: 0.9rem;
+            }
+            .filter-btn.active, .filter-btn:hover { 
+                background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.5); 
+            }
+            
+            .gallery-grid { 
+                display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); 
+                gap: 20px; max-height: 600px; overflow-y: auto; padding: 10px;
+            }
+            .gallery-item { 
+                position: relative; border-radius: 12px; overflow: hidden; 
+                background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); 
+                border: 1px solid rgba(255,255,255,0.2); transition: all 0.3s; cursor: pointer;
+            }
+            .gallery-item:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+            .gallery-item img, .gallery-item video { 
+                width: 100%; height: 200px; object-fit: cover; display: block; 
+            }
+            .gallery-item-info { 
+                padding: 15px; background: rgba(255,255,255,0.05); 
+            }
+            .gallery-item-name { font-weight: 600; margin-bottom: 5px; font-size: 0.9rem; }
+            .gallery-item-meta { font-size: 0.8rem; opacity: 0.8; }
+            .gallery-item-uploader { 
+                color: #10b981; font-weight: 500; margin-top: 5px; font-size: 0.85rem;
+            }
+            
+            /* Video Overlay */
+            .video-overlay { 
+                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                background: rgba(0,0,0,0.7); border-radius: 50%; padding: 15px; 
+                pointer-events: none;
+            }
+            .video-overlay i { font-size: 1.5rem; color: white; }
+            
+            /* Loading */
+            .loading { text-align: center; padding: 40px; opacity: 0.8; }
+            .spinner { 
+                width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.3); 
+                border-top: 3px solid white; border-radius: 50%; 
+                animation: spin 1s linear infinite; margin: 0 auto 15px;
+            }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            
+            /* Responsive */
+            @media (max-width: 768px) {
+                .header h1 { font-size: 2rem; }
+                .gallery-header { flex-direction: column; align-items: stretch; }
+                .search-box { width: 100%; }
+                .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+                .gallery-item img, .gallery-item video { height: 150px; }
+            }
+            
+            /* Modal */
+            .modal { 
+                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: rgba(0,0,0,0.9); z-index: 1000; padding: 20px; 
+            }
+            .modal-content { 
+                position: relative; max-width: 90%; max-height: 90%; margin: auto; 
+                top: 50%; transform: translateY(-50%); 
+            }
+            .modal img, .modal video { 
+                width: 100%; height: auto; max-height: 80vh; object-fit: contain; 
+                border-radius: 12px; 
+            }
+            .modal-close { 
+                position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); 
+                border: none; color: white; font-size: 1.5rem; padding: 10px 15px; 
+                border-radius: 50%; cursor: pointer; backdrop-filter: blur(10px);
+            }
+            .modal-info { 
+                background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); 
+                border-radius: 12px; padding: 20px; margin-top: 15px; color: white;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1><i class="fas fa-heart"></i> Düğün Galeri Dashboard</h1>
+                <p>Tüm düğün fotoğraflarınızı buradan görüntüleyebilirsiniz</p>
+            </div>
+            
+            <!-- Login Section -->
+            <div class="login-section" id="loginSection">
+                <h3 style="text-align: center; margin-bottom: 25px;"><i class="fas fa-lock"></i> Giriş Yapın</h3>
+                <input type="password" class="login-input" id="accessCode" placeholder="Erişim kodunuzu girin..." maxlength="50">
+                <button class="login-btn" onclick="login()">
+                    <i class="fas fa-sign-in-alt"></i> Giriş Yap
+                </button>
+                <p style="text-align: center; margin-top: 15px; opacity: 0.8; font-size: 0.9rem;">
+                    Erişim kodunuz yoksa düğün organizatörüyle iletişime geçin
+                </p>
+            </div>
+            
+            <!-- Dashboard -->
+            <div class="dashboard" id="dashboard">
+                <!-- Stats -->
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <i class="fas fa-images" style="color: #10b981;"></i>
+                        <div class="stat-number" id="totalPhotos">-</div>
+                        <div class="stat-label">Toplam Fotoğraf</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-video" style="color: #3b82f6;"></i>
+                        <div class="stat-number" id="totalVideos">-</div>
+                        <div class="stat-label">Toplam Video</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-users" style="color: #f59e0b;"></i>
+                        <div class="stat-number" id="totalUploaders">-</div>
+                        <div class="stat-label">Katkıda Bulunan</div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-hdd" style="color: #8b5cf6;"></i>
+                        <div class="stat-number" id="totalSize">-</div>
+                        <div class="stat-label">Toplam Boyut</div>
+                    </div>
+                </div>
+                
+                <!-- Gallery -->
+                <div class="gallery-section">
+                    <div class="gallery-header">
+                        <h3><i class="fas fa-photo-video"></i> Tüm Medya Dosyaları</h3>
+                        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                            <input type="text" class="search-box" id="searchBox" placeholder="🔍 İsim, dosya adı ile ara..." onkeyup="filterGallery()">
+                            <div class="filter-btns">
+                                <button class="filter-btn active" onclick="filterMedia('all')">Tümü</button>
+                                <button class="filter-btn" onclick="filterMedia('image')">Fotoğraflar</button>
+                                <button class="filter-btn" onclick="filterMedia('video')">Videolar</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="gallery-grid" id="galleryGrid">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Medya dosyaları yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal -->
+        <div class="modal" id="mediaModal">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div class="modal-content" id="modalContent"></div>
+        </div>
+        
+        <script>
+            let allFiles = [];
+            let filteredFiles = [];
+            let currentFilter = 'all';
+            
+                         // Erişim kodları dinamik olarak yüklenir
+             let ACCESS_CODES = {};
+            
+                         async function loadAccessCodes() {
+                 try {
+                     const response = await fetch('/admin/wedding-codes', {
+                         headers: { 'Authorization': 'Bearer dugun-gallery-key-2024' }
+                     });
+                     const data = await response.json();
+                     if (data.success) {
+                         ACCESS_CODES = {};
+                         Object.entries(data.codes).forEach(([code, info]) => {
+                             if (info.status === 'active') {
+                                 ACCESS_CODES[code] = info.name;
+                             }
+                         });
+                     }
+                 } catch (error) {
+                     console.error('Kod yükleme hatası:', error);
+                 }
+             }
+             
+             function login() {
+                 const code = document.getElementById('accessCode').value.trim();
+                 if (ACCESS_CODES[code]) {
+                     document.getElementById('loginSection').style.display = 'none';
+                     document.getElementById('dashboard').style.display = 'block';
+                     loadGallery();
+                     showMessage(`✅ Hoş geldiniz! ${ACCESS_CODES[code]}`, 'success');
+                 } else {
+                     showMessage('❌ Geçersiz erişim kodu!', 'error');
+                 }
+             }
+            
+            async function loadGallery() {
+                try {
+                    // Local files
+                    const localResponse = await fetch('/api/gallery', {
+                        headers: { 'Authorization': 'Bearer dugun-gallery-key-2024' }
+                    });
+                    
+                    // Drive files
+                    const driveResponse = await fetch('/api/drive-gallery', {
+                        headers: { 'Authorization': 'Bearer dugun-gallery-key-2024' }
+                    });
+                    
+                    const localData = await localResponse.json();
+                    const driveData = await driveResponse.json();
+                    
+                    allFiles = [];
+                    if (localData.success) allFiles = [...allFiles, ...localData.files.map(f => ({...f, source: 'local'}))];
+                    if (driveData.success) allFiles = [...allFiles, ...driveData.files.map(f => ({...f, source: 'drive'}))];
+                    
+                    updateStats();
+                    filterMedia('all');
+                    
+                } catch (error) {
+                    console.error('Gallery yükleme hatası:', error);
+                    showMessage('❌ Galeri yüklenirken hata oluştu', 'error');
+                }
+            }
+            
+            function updateStats() {
+                const photos = allFiles.filter(f => f.mimeType && f.mimeType.startsWith('image/')).length;
+                const videos = allFiles.filter(f => f.mimeType && f.mimeType.startsWith('video/')).length;
+                const uploaders = new Set(allFiles.map(f => {
+                    const match = f.name.match(/^([^_]+)_/);
+                    return match ? match[1] : 'Anonim';
+                })).size;
+                const totalSize = allFiles.reduce((sum, f) => sum + (f.size || 0), 0);
+                
+                document.getElementById('totalPhotos').textContent = photos;
+                document.getElementById('totalVideos').textContent = videos;
+                document.getElementById('totalUploaders').textContent = uploaders;
+                document.getElementById('totalSize').textContent = formatFileSize(totalSize);
+            }
+            
+            function filterMedia(type) {
+                currentFilter = type;
+                
+                // Update active button
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                filteredFiles = allFiles.filter(file => {
+                    if (type === 'all') return true;
+                    if (type === 'image') return file.mimeType && file.mimeType.startsWith('image/');
+                    if (type === 'video') return file.mimeType && file.mimeType.startsWith('video/');
+                    return true;
+                });
+                
+                displayGallery();
+            }
+            
+            function filterGallery() {
+                const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+                const filtered = filteredFiles.filter(file => 
+                    file.name.toLowerCase().includes(searchTerm) ||
+                    (file.name.match(/^([^_]+)_/) && file.name.match(/^([^_]+)_/)[1].toLowerCase().includes(searchTerm))
+                );
+                displayGallery(filtered);
+            }
+            
+            function displayGallery(files = filteredFiles) {
+                const grid = document.getElementById('galleryGrid');
+                
+                if (files.length === 0) {
+                    grid.innerHTML = '<div class="loading"><p>Bu filtrede dosya bulunamadı</p></div>';
+                    return;
+                }
+                
+                grid.innerHTML = files.map(file => {
+                    const isVideo = file.mimeType && file.mimeType.startsWith('video/');
+                    const uploader = file.name.match(/^([^_]+)_/) ? file.name.match(/^([^_]+)_/)[1] : 'Anonim';
+                    const url = file.source === 'drive' ? file.webViewLink : file.webViewLink;
+                    const thumbnailUrl = file.source === 'drive' ? (file.thumbnailLink || file.iconLink) : url;
+                    
+                    return `
+                        <div class="gallery-item" onclick="openModal('${url}', '${file.name}', '${uploader}', ${isVideo})">
+                            ${isVideo ? 
+                                `<video src="${url}" style="pointer-events: none;"></video>
+                                 <div class="video-overlay"><i class="fas fa-play"></i></div>` :
+                                `<img src="${thumbnailUrl}" alt="${file.name}" loading="lazy">`
+                            }
+                            <div class="gallery-item-info">
+                                <div class="gallery-item-name">${file.name.substring(0, 30)}${file.name.length > 30 ? '...' : ''}</div>
+                                <div class="gallery-item-meta">
+                                    ${formatFileSize(file.size || 0)} • ${new Date(file.createdTime || Date.now()).toLocaleDateString('tr-TR')}
+                                </div>
+                                <div class="gallery-item-uploader">👤 ${uploader}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            function openModal(url, name, uploader, isVideo) {
+                const modal = document.getElementById('mediaModal');
+                const content = document.getElementById('modalContent');
+                
+                content.innerHTML = `
+                    ${isVideo ? 
+                        `<video src="${url}" controls style="width: 100%; height: auto; max-height: 80vh;"></video>` :
+                        `<img src="${url}" alt="${name}" style="width: 100%; height: auto; max-height: 80vh;">`
+                    }
+                    <div class="modal-info">
+                        <h3>${name}</h3>
+                        <p><strong>Yükleyen:</strong> ${uploader}</p>
+                        <a href="${url}" target="_blank" style="color: #10b981; text-decoration: none;">
+                            <i class="fas fa-external-link-alt"></i> Dosyayı Aç
+                        </a>
+                    </div>
+                `;
+                
+                modal.style.display = 'block';
+            }
+            
+            function closeModal() {
+                document.getElementById('mediaModal').style.display = 'none';
+            }
+            
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            function showMessage(text, type) {
+                // Simple alert for now
+                alert(text);
+            }
+            
+            // Enter key support
+            document.getElementById('accessCode').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') login();
+            });
+            
+                         // Close modal on outside click
+             document.getElementById('mediaModal').addEventListener('click', function(e) {
+                 if (e.target === this) closeModal();
+             });
+             
+             // Load access codes on page load
+             loadAccessCodes();
+        </script>
+    </body>
+    </html>
+    '''
+
+@app.route('/admin/wedding-codes', methods=['GET'])
+def admin_wedding_codes():
+    """Admin - Düğün kodları yönetimi"""
+    try:
+        # Güvenlik kontrolü - Admin veya gallery erişimi
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or (auth_header != 'Bearer admin-security-key-2025' and auth_header != 'Bearer dugun-gallery-key-2024'):
+            return jsonify({'success': False, 'error': 'Yetkisiz erişim'}), 403
+        
+        # Kod dosyasını oku (JSON formatında)
+        codes_file = 'uploads/wedding_codes.json'
+        if os.path.exists(codes_file):
+            with open(codes_file, 'r', encoding='utf-8') as f:
+                codes_data = json.load(f)
+        else:
+            # Default kodlar
+            codes_data = {
+                'dugun2025': {
+                    'name': 'Yunus & Hilal Düğünü',
+                    'created_date': '2025-01-01',
+                    'status': 'active',
+                    'usage_count': 0
+                },
+                'admin123': {
+                    'name': 'Admin Erişimi',
+                    'created_date': '2025-01-01',
+                    'status': 'active',
+                    'usage_count': 0
+                }
+            }
+            # İlk kez dosyayı oluştur
+            with open(codes_file, 'w', encoding='utf-8') as f:
+                json.dump(codes_data, f, ensure_ascii=False, indent=2)
+        
+        return jsonify({
+            'success': True,
+            'codes': codes_data,
+            'total_codes': len(codes_data),
+            'active_codes': len([c for c in codes_data.values() if c['status'] == 'active'])
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Kod okuma hatası: {str(e)}'}), 500
+
+@app.route('/admin/wedding-codes', methods=['POST'])
+def admin_add_wedding_code():
+    """Admin - Yeni düğün kodu ekle"""
+    try:
+        # Admin güvenlik kontrolü
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or auth_header != 'Bearer admin-security-key-2025':
+            return jsonify({'success': False, 'error': 'Yetkisiz erişim - Admin gerekli'}), 403
+        
+        data = request.get_json()
+        code = data.get('code', '').strip()
+        name = data.get('name', '').strip()
+        
+        if not code or not name:
+            return jsonify({'success': False, 'error': 'Kod ve isim zorunludur'}), 400
+            
+        if len(code) < 5:
+            return jsonify({'success': False, 'error': 'Kod en az 5 karakter olmalıdır'}), 400
+        
+        # Kod dosyasını oku
+        codes_file = 'uploads/wedding_codes.json'
+        if os.path.exists(codes_file):
+            with open(codes_file, 'r', encoding='utf-8') as f:
+                codes_data = json.load(f)
+        else:
+            codes_data = {}
+        
+        # Kod zaten var mı kontrol et
+        if code in codes_data:
+            return jsonify({'success': False, 'error': 'Bu kod zaten mevcut'}), 400
+        
+        # Yeni kod ekle
+        codes_data[code] = {
+            'name': name,
+            'created_date': datetime.now().strftime('%Y-%m-%d'),
+            'status': 'active',
+            'usage_count': 0
+        }
+        
+        # Dosyayı güncelle
+        with open(codes_file, 'w', encoding='utf-8') as f:
+            json.dump(codes_data, f, ensure_ascii=False, indent=2)
+        
+        # Güvenlik loguna kaydet
+        log_security_event("WEDDING_CODE_CREATED", "admin", code, 
+                         request.headers.get('X-Forwarded-For', request.remote_addr),
+                         request.headers.get('User-Agent', 'Unknown'),
+                         f"Wedding name: {name}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Düğün kodu "{code}" başarıyla oluşturuldu',
+            'code': code,
+            'name': name
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Kod ekleme hatası: {str(e)}'}), 500
+
+@app.route('/admin/codes-dashboard', methods=['GET'])
+def admin_codes_dashboard():
+    """Admin - Kod yönetim dashboard"""
+    return '''
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🔑 Düğün Kodları Yönetimi</title>
+        <style>
+            body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+            .container { max-width: 1000px; margin: 0 auto; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; text-align: center; }
+            .card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+            .stat-item { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; }
+            .form-group { margin-bottom: 20px; }
+            .form-label { font-weight: 600; margin-bottom: 8px; display: block; color: #333; }
+            .form-input { width: 100%; padding: 12px 15px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; outline: none; }
+            .form-input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+            .btn { background: #667eea; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: all 0.3s; }
+            .btn:hover { background: #5a67d8; transform: translateY(-2px); }
+            .btn-danger { background: #ef4444; }
+            .btn-danger:hover { background: #dc2626; }
+            .codes-list { margin-top: 20px; }
+            .code-item { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+            .code-info h4 { margin: 0 0 5px 0; color: #333; }
+            .code-info p { margin: 0; color: #666; font-size: 0.9rem; }
+            .code-actions { display: flex; gap: 10px; }
+            .status-active { color: #10b981; font-weight: 600; }
+            .status-inactive { color: #ef4444; font-weight: 600; }
+            .usage-badge { background: #667eea; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1><i class="fas fa-key"></i> Düğün Kodları Yönetim Paneli</h1>
+                <p>Düğün sahiplerinin erişim kodlarını buradan yönetebilirsiniz</p>
+            </div>
+            
+            <div class="stats" id="statsGrid">
+                <div class="stat-item">
+                    <h3 id="totalCodes">-</h3>
+                    <p>Toplam Kod</p>
+                </div>
+                <div class="stat-item">
+                    <h3 id="activeCodes">-</h3>
+                    <p>Aktif Kod</p>
+                </div>
+                <div class="stat-item">
+                    <h3 id="totalUsage">-</h3>
+                    <p>Toplam Kullanım</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🆕 Yeni Düğün Kodu Oluştur</h3>
+                <form id="codeForm">
+                    <div class="form-group">
+                        <label class="form-label">Kod:</label>
+                        <input type="text" class="form-input" id="newCode" placeholder="Örn: ahmet-ayse-2025" maxlength="30" required>
+                        <small style="color: #666;">En az 5 karakter, sadece harf, rakam ve tire kullanın</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Düğün Adı:</label>
+                        <input type="text" class="form-input" id="weddingName" placeholder="Örn: Ahmet & Ayşe Düğünü" maxlength="100" required>
+                    </div>
+                    <button type="submit" class="btn">
+                        <i class="fas fa-plus"></i> Kod Oluştur
+                    </button>
+                </form>
+            </div>
+            
+            <div class="card">
+                <h3>📋 Mevcut Kodlar</h3>
+                <div class="codes-list" id="codesList">
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <div style="font-size: 2rem; margin-bottom: 15px;">⏳</div>
+                        <p>Kodlar yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            let allCodes = {};
+            
+            async function loadCodes() {
+                try {
+                    const response = await fetch('/admin/wedding-codes', {
+                        headers: { 'Authorization': 'Bearer admin-security-key-2025' }
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        allCodes = data.codes;
+                        updateStats(data);
+                        displayCodes();
+                    } else {
+                        alert('Hata: ' + data.error);
+                    }
+                } catch (error) {
+                    alert('Bağlantı hatası: ' + error.message);
+                }
+            }
+            
+            function updateStats(data) {
+                document.getElementById('totalCodes').textContent = data.total_codes;
+                document.getElementById('activeCodes').textContent = data.active_codes;
+                document.getElementById('totalUsage').textContent = Object.values(data.codes).reduce((sum, code) => sum + code.usage_count, 0);
+            }
+            
+            function displayCodes() {
+                const container = document.getElementById('codesList');
+                
+                if (Object.keys(allCodes).length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #666;">Henüz kod oluşturulmamış</p>';
+                    return;
+                }
+                
+                container.innerHTML = Object.entries(allCodes).map(([code, info]) => `
+                    <div class="code-item">
+                        <div class="code-info">
+                            <h4>${info.name}</h4>
+                            <p><strong>Kod:</strong> ${code} | <strong>Tarih:</strong> ${info.created_date} | 
+                               <span class="status-${info.status}">${info.status === 'active' ? 'Aktif' : 'Pasif'}</span> |
+                               <span class="usage-badge">${info.usage_count} kullanım</span>
+                            </p>
+                        </div>
+                        <div class="code-actions">
+                            <button class="btn" onclick="copyCode('${code}')">
+                                <i class="fas fa-copy"></i> Kopyala
+                            </button>
+                            <button class="btn" onclick="shareCode('${code}', '${info.name}')">
+                                <i class="fas fa-share"></i> Paylaş
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            function copyCode(code) {
+                navigator.clipboard.writeText(code).then(() => {
+                    alert('✅ Kod kopyalandı: ' + code);
+                });
+            }
+            
+            function shareCode(code, name) {
+                const dashboardUrl = window.location.origin + '/wedding-owner/dashboard';
+                const message = `${name} düğün galerisi erişim bilgileri:\\n\\nAdres: ${dashboardUrl}\\nKod: ${code}\\n\\nTüm fotoğraflarınızı bu adresten görüntüleyebilirsiniz.`;
+                
+                if (navigator.share) {
+                    navigator.share({
+                        title: name + ' - Düğün Galerisi',
+                        text: message
+                    });
+                } else {
+                    navigator.clipboard.writeText(message).then(() => {
+                        alert('✅ Paylaşım mesajı kopyalandı!\\n\\nWhatsApp veya SMS ile gönderebilirsiniz.');
+                    });
+                }
+            }
+            
+            document.getElementById('codeForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const code = document.getElementById('newCode').value.trim();
+                const name = document.getElementById('weddingName').value.trim();
+                
+                if (!code || !name) {
+                    alert('Lütfen tüm alanları doldurun!');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/admin/wedding-codes', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer admin-security-key-2025'
+                        },
+                        body: JSON.stringify({ code, name })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('✅ ' + data.message);
+                        document.getElementById('codeForm').reset();
+                        loadCodes(); // Reload codes
+                    } else {
+                        alert('❌ Hata: ' + data.error);
+                    }
+                    
+                } catch (error) {
+                    alert('❌ Bağlantı hatası: ' + error.message);
+                }
+            });
+            
+            // Load codes on page load
+            loadCodes();
+        </script>
+    </body>
+    </html>
+    '''
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False) 
