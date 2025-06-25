@@ -631,19 +631,23 @@ function testBackend() {
 
 function handleUpload(event) {
     event.preventDefault();
+    event.stopPropagation();
+
+    console.log('📤 Upload butonu tıklandı. isUploading:', isUploading, 'selectedFiles:', selectedFiles.length);
 
     if (isUploading) {
         showMessage('⏳ Zaten bir yükleme işlemi devam ediyor...', 'warning');
-        return;
+        return false;
     }
 
     if (!selectedFiles || selectedFiles.length === 0) {
         showMessage('📁 Önce dosya seçin!', 'error');
-        return;
+        return false;
     }
 
     // Upload başlat - hızlı mode
     startFastUpload();
+    return false;
 }
 
 function startFastUpload() {
@@ -864,6 +868,12 @@ function removeSuccessfulFiles(successFiles) {
 }
 
 function clearAllFiles() {
+    if (isUploading) {
+        showMessage('⚠️ Yükleme devam ediyor, dosyalar temizlenemez!', 'warning');
+        return;
+    }
+
+    console.log('🗑️ Tüm dosyalar temizleniyor...');
     selectedFiles = [];
     var previewContainer = document.getElementById('previewContainer');
     if (previewContainer) {

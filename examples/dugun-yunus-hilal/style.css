@@ -916,247 +916,333 @@ body::before {
 /* Mobile Responsive Design - Enhanced for readability */
 @media (max-width: 768px) {
     body::before {
-        background:
-            radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
+        display: none;
+        /* Arkaplan efektlerini kaldır */
     }
 
     .container {
-        padding: 15px 10px;
+        padding: 10px 8px;
     }
 
     .main-card {
-        background: rgba(255, 255, 255, 0.20);
-        backdrop-filter: blur(10px);
-        padding: 25px 20px;
-        border-radius: 20px;
-        border: 2px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.95);
+        /* Neredeyse opak beyaz */
+        backdrop-filter: none;
+        /* Blur efektini kaldır */
+        padding: 20px 15px;
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     }
 
     .header .emoji {
-        font-size: 4rem;
+        font-size: 3.5rem;
+        margin-bottom: 10px;
     }
 
     .header h1 {
-        font-size: 2.8rem;
-        text-shadow: 0 3px 15px rgba(0, 0, 0, 0.6);
-        color: white;
+        font-size: 2.2rem;
+        text-shadow: none;
+        color: #333;
+        font-weight: 700;
     }
 
     .header p {
-        font-size: 1.4rem;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        font-size: 1.1rem;
+        text-shadow: none;
+        color: #555;
     }
 
     .upload-section {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(8px);
-        padding: 25px 20px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: #f8f9fa;
+        backdrop-filter: none;
+        padding: 20px 15px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     }
 
     .file-input-label {
-        padding: 35px 25px;
-        border: 3px dashed rgba(255, 255, 255, 0.5);
+        padding: 25px 20px;
+        border: 2px dashed #8b5cf6;
+        background: #8b5cf6;
     }
 
     .file-input-label i {
-        font-size: 4rem;
+        font-size: 3rem;
     }
 
     .file-input-label .main-text {
-        font-size: 1.8rem;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        font-size: 1.4rem;
+        text-shadow: none;
+        font-weight: 600;
     }
 
     .file-input-label .sub-text {
-        font-size: 1.3rem;
-        text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+        font-size: 1rem;
+        text-shadow: none;
+        opacity: 0.9;
     }
 
     #previewContainer {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 18px;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
     }
 
     .thumbnail-image {
-        height: 140px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        background: rgba(255, 255, 255, 0.15);
+        height: 120px;
+        border: 1px solid #e9ecef;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .thumbnail-info {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(5px);
+        background: #f8f9fa;
+        backdrop-filter: none;
+        padding: 6px;
     }
 
     .file-name {
-        font-size: 0.9rem;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        font-size: 0.75rem;
+        text-shadow: none;
+        color: #333;
+        font-weight: 500;
     }
 
     .file-size {
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.7rem;
+        color: #666;
     }
 
     .upload-btn {
-        font-size: 1.4rem;
-        padding: 25px 30px;
+        font-size: 1.1rem;
+        padding: 18px 25px;
+        border-radius: 12px;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
     }
 
     .modal-content {
-        padding: 30px 20px;
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.20);
-        border: 2px solid rgba(255, 255, 255, 0.4);
+        padding: 25px 20px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.98);
+        border: none;
+        color: #333;
+    }
+
+    .modal-header h3 {
+        color: #333;
+        text-shadow: none;
+        font-size: 1.5rem;
+    }
+
+    .progress-text {
+        color: #333;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .progress-message {
+        color: #555;
+        font-size: 0.9rem;
     }
 
     .message-toast {
         right: 10px;
         left: 10px;
         max-width: none;
-        background: rgba(255, 255, 255, 0.20);
-        border: 2px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid #e9ecef;
+        color: #333;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     }
 
     .qr-section {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(8px);
-        padding: 30px 20px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: #f8f9fa;
+        backdrop-filter: none;
+        padding: 25px 15px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     }
 
     .qr-section h3 {
-        font-size: 1.8rem;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+        font-size: 1.4rem;
+        text-shadow: none;
+        color: #333;
+        font-weight: 600;
     }
 
     .qr-section p {
-        font-size: 1.2rem;
-        text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+        font-size: 1rem;
+        text-shadow: none;
+        color: #555;
     }
 
     .share-buttons {
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 12px;
+        flex-direction: column;
+        gap: 10px;
     }
 
     .share-btn {
-        width: auto;
-        min-width: 160px;
+        width: 100%;
         justify-content: center;
-        font-size: 1rem;
-        padding: 16px 24px;
+        font-size: 0.95rem;
+        padding: 14px 20px;
+        font-weight: 600;
+        border-radius: 10px;
     }
 
     .file-stats {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: #f8f9fa;
+        backdrop-filter: none;
+        border: 1px solid #e9ecef;
+        padding: 15px;
+        gap: 10px;
     }
 
     .stat-item {
-        font-size: 1.1rem;
-        color: white;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        font-size: 0.9rem;
+        color: #333;
+        text-shadow: none;
+        font-weight: 500;
+    }
+
+    .stat-item i {
+        color: #8b5cf6;
+    }
+
+    .clear-all-btn {
+        font-size: 0.85rem;
+        padding: 10px 16px;
     }
 
     .user-info-section {
-        background: rgba(255, 255, 255, 0.12);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: #f8f9fa;
+        backdrop-filter: none;
+        border: 1px solid #e9ecef;
+        padding: 20px 15px;
     }
 
     .form-label {
-        font-size: 1.1rem;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        font-size: 0.95rem;
+        text-shadow: none;
+        color: #333;
+        font-weight: 600;
     }
 
     .form-input {
-        background: rgba(255, 255, 255, 0.15);
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        font-size: 1.1rem;
-        padding: 16px 20px;
+        background: white;
+        border: 2px solid #e9ecef;
+        font-size: 1rem;
+        padding: 12px 16px;
+        color: #333;
     }
 
     .form-input::placeholder {
-        color: rgba(255, 255, 255, 0.7);
+        color: #999;
+    }
+
+    .form-input:focus {
+        background: white;
+        border-color: #8b5cf6;
     }
 
     .form-hint {
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 0.95rem;
+        color: #666;
+        font-size: 0.85rem;
+        text-shadow: none;
+    }
+
+    .footer-content {
+        color: #333;
+    }
+
+    .social-link {
+        background: #f8f9fa;
+        color: #333;
+        border: 1px solid #e9ecef;
+        backdrop-filter: none;
+    }
+
+    .copyright {
+        color: #666;
+        text-shadow: none;
+    }
+
+    /* Remove button daha görünür */
+    .remove-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.8rem;
+        top: -10px;
+        right: -10px;
+        box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);
     }
 }
 
 @media (max-width: 480px) {
     .header h1 {
-        font-size: 2.4rem;
+        font-size: 1.9rem;
     }
 
     .header p {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
 
     .file-input-label .main-text {
-        font-size: 1.6rem;
+        font-size: 1.25rem;
     }
 
     .file-input-label .sub-text {
-        font-size: 1.1rem;
+        font-size: 0.9rem;
     }
 
     #previewContainer {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 15px;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
     }
 
     .thumbnail-image {
-        height: 120px;
+        height: 100px;
     }
 
     .file-stats {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 12px;
-        justify-content: center;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 5px;
     }
 
     .qr-section {
-        padding: 25px 15px;
+        padding: 20px 12px;
     }
 
-    .qr-section h3 {
-        font-size: 1.6rem;
-    }
-
-    .qr-section p {
-        font-size: 1.1rem;
+    .qr-code {
+        transform: scale(0.9);
     }
 }
 
 @media (max-width: 320px) {
     .header h1 {
-        font-size: 2.2rem;
+        font-size: 1.7rem;
     }
 
     #previewContainer {
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
     }
 
-    .modal-content {
-        padding: 25px 15px;
+    .thumbnail-image {
+        height: 90px;
     }
 
     .file-input-label .main-text {
-        font-size: 1.4rem;
+        font-size: 1.15rem;
     }
 
     .file-input-label .sub-text {
-        font-size: 1rem;
+        font-size: 0.85rem;
     }
 }
 
