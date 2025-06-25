@@ -28,7 +28,17 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 # Google servis hesabı JSON'u environment variable'dan al, yoksa dosyadan oku
 SERVICE_ACCOUNT_JSON = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON', '')
+SERVICE_ACCOUNT_JSON_B64 = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON_B64', '')
 SERVICE_ACCOUNT_FILE = 'service_account.json'
+
+# Base64 encoded JSON varsa önce onu decode et
+if SERVICE_ACCOUNT_JSON_B64:
+    try:
+        import base64
+        SERVICE_ACCOUNT_JSON = base64.b64decode(SERVICE_ACCOUNT_JSON_B64).decode('utf-8')
+        print("Base64 encoded service account JSON başarıyla decode edildi")
+    except Exception as e:
+        print(f"Base64 decode hatası: {e}")
 
 # Eğer environment variable boşsa, dosyadan oku
 if not SERVICE_ACCOUNT_JSON and os.path.exists(SERVICE_ACCOUNT_FILE):
