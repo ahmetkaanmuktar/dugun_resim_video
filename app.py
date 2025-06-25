@@ -7,6 +7,8 @@ from werkzeug.utils import secure_filename
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import logging
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app, 
@@ -14,6 +16,32 @@ CORS(app,
      methods=["GET", "POST", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"],
      supports_credentials=True)
+
+# Güvenlik ve takip için logging ayarları
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Güvenlik log dosyası
+SECURITY_LOG_FILE = 'uploads/security_log.txt'
+
+def log_security_event(event_type, user_name, file_name, ip_address, user_agent, additional_info=""):
+    """Güvenlik olaylarını kaydet"""
+    try:
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        log_entry = f"[{timestamp}] {event_type} | User: {user_name} | File: {file_name} | IP: {ip_address} | Agent: {user_agent[:100]} | Info: {additional_info}\n"
+        
+        # Uploads klasörü yoksa oluştur
+        if not os.path.exists('uploads'):
+            os.makedirs('uploads')
+            
+        with open(SECURITY_LOG_FILE, 'a', encoding='utf-8') as f:
+            f.write(log_entry)
+        
+        # Konsola da yazdır
+        print(f"🔒 SECURITY LOG: {log_entry.strip()}")
+        
+    except Exception as e:
+        print(f"Security logging hatası: {e}")
 
 # Render için environment variable'ları
 UPLOAD_FOLDER = 'uploads'
@@ -170,6 +198,10 @@ def upload_file():
         print(f"Request form: {request.form}")
         print(f"Content-Length: {request.headers.get('Content-Length', 'Unknown')}")
         
+        # Güvenlik bilgileri
+        user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        user_agent = request.headers.get('User-Agent', 'Unknown')
+        
         if 'file' not in request.files:
             print("Hata: 'file' anahtarı bulunamadı")
             print(f"Available keys: {list(request.files.keys())}")
@@ -178,6 +210,11 @@ def upload_file():
         
         file = request.files['file']
         uploader_name = request.form.get('uploader_name', '').strip()
+        
+        # İSİM ZORUNLU KONTROL - Backend'de de kontrol et
+        if not uploader_name or len(uploader_name) < 2:
+            log_security_event("UPLOAD_REJECTED", uploader_name or "UNKNOWN", file.filename or "unknown_file", user_ip, user_agent, "İsim eksik veya çok kısa")
+            return jsonify({'error': 'İsim zorunludur! En az 2 karakter olmalıdır.'}), 400
         
         # File size calculation
         file.seek(0, 2)  # Seek to end
@@ -235,6 +272,10 @@ def upload_file():
             drive_id = backup_to_drive(filepath, unique_filename)
             drive_status = "backed_up" if drive_id else "local_only"
             print(f"Drive yedekleme durumu: {drive_status}, Drive ID: {drive_id}")
+            
+            # Başarılı upload'u güvenlik loguna kaydet
+            log_security_event("FILE_UPLOADED", uploader_name, unique_filename, user_ip, user_agent, 
+                             f"Size: {file_size}bytes, Drive: {drive_status}, DriveID: {drive_id}")
             
             result = {
                 'success': True, 
@@ -516,6 +557,161 @@ def gallery_view():
             }
             
             loadGallery();
+        </script>
+    </body>
+    </html>
+    '''
+
+@app.route('/admin/security-logs', methods=['GET'])
+def security_logs():
+    """Admin güvenlik logları - Gizli endpoint"""
+    try:
+        # Basit güvenlik kontrolü
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or auth_header != 'Bearer admin-security-key-2025':
+            return jsonify({'success': False, 'error': 'Yetkisiz erişim - Admin gerekli'}), 403
+        
+        # Security log dosyasını oku
+        if not os.path.exists(SECURITY_LOG_FILE):
+            return jsonify({'success': True, 'logs': [], 'message': 'Henüz log kaydı yok'})
+        
+        with open(SECURITY_LOG_FILE, 'r', encoding='utf-8') as f:
+            logs = f.readlines()
+        
+        # Son 100 log kaydını al (en yeni önce)
+        recent_logs = logs[-100:][::-1]
+        
+        return jsonify({
+            'success': True, 
+            'logs': recent_logs,
+            'total_count': len(logs),
+            'showing': len(recent_logs),
+            'message': 'Güvenlik logları başarıyla yüklendi'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Log okuma hatası: {str(e)}'}), 500
+
+@app.route('/admin/security-dashboard', methods=['GET'])
+def security_dashboard():
+    """Admin güvenlik dashboard - Web interface"""
+    return '''
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🔒 Güvenlik Dashboard</title>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+            .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #2c3e50; margin-bottom: 20px; text-align: center; }
+            .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+            .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; }
+            .logs-container { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; max-height: 600px; overflow-y: auto; }
+            .log-entry { padding: 10px; border-bottom: 1px solid #e9ecef; font-family: 'Courier New', monospace; font-size: 12px; }
+            .log-upload { background: #d4edda; } .log-rejected { background: #f8d7da; }
+            .refresh-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
+            .refresh-btn:hover { background: #218838; }
+            .search-box { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔒 Düğün Fotoğraf Sistemi - Güvenlik Dashboard</h1>
+            
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <h3>📊 Toplam Upload</h3>
+                    <div id="totalUploads">Yükleniyor...</div>
+                </div>
+                <div class="stat-card">
+                    <h3>❌ Reddedilen</h3>
+                    <div id="rejectedCount">Yükleniyor...</div>
+                </div>
+                <div class="stat-card">
+                    <h3>👥 Benzersiz Kullanıcı</h3>
+                    <div id="uniqueUsers">Yükleniyor...</div>
+                </div>
+                <div class="stat-card">
+                    <h3>📈 Bugün</h3>
+                    <div id="todayCount">Yükleniyor...</div>
+                </div>
+            </div>
+            
+            <button class="refresh-btn" onclick="loadLogs()">🔄 Logları Yenile</button>
+            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Log ara... (kullanıcı adı, dosya adı, IP)" onkeyup="filterLogs()">
+            
+            <div class="logs-container" id="logsContainer">
+                <div style="padding: 20px; text-align: center;">Loglar yükleniyor...</div>
+            </div>
+        </div>
+        
+        <script>
+            let allLogs = [];
+            
+            async function loadLogs() {
+                try {
+                    const response = await fetch('/admin/security-logs', {
+                        headers: { 'Authorization': 'Bearer admin-security-key-2025' }
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        allLogs = data.logs;
+                        displayLogs(allLogs);
+                        updateStats(allLogs);
+                    } else {
+                        document.getElementById('logsContainer').innerHTML = '<div style="padding: 20px; color: red;">Hata: ' + data.error + '</div>';
+                    }
+                } catch (error) {
+                    document.getElementById('logsContainer').innerHTML = '<div style="padding: 20px; color: red;">Bağlantı hatası: ' + error.message + '</div>';
+                }
+            }
+            
+            function displayLogs(logs) {
+                const container = document.getElementById('logsContainer');
+                if (logs.length === 0) {
+                    container.innerHTML = '<div style="padding: 20px; text-align: center;">Henüz log kaydı yok</div>';
+                    return;
+                }
+                
+                container.innerHTML = logs.map(log => {
+                    const isUpload = log.includes('FILE_UPLOADED');
+                    const isRejected = log.includes('UPLOAD_REJECTED');
+                    const className = isUpload ? 'log-upload' : (isRejected ? 'log-rejected' : '');
+                    return `<div class="log-entry ${className}">${log.trim()}</div>`;
+                }).join('');
+            }
+            
+            function updateStats(logs) {
+                const uploads = logs.filter(log => log.includes('FILE_UPLOADED')).length;
+                const rejected = logs.filter(log => log.includes('UPLOAD_REJECTED')).length;
+                const users = new Set(logs.map(log => {
+                    const match = log.match(/User: ([^|]+)/);
+                    return match ? match[1].trim() : 'Unknown';
+                })).size;
+                
+                const today = new Date().toISOString().split('T')[0];
+                const todayLogs = logs.filter(log => log.includes(today)).length;
+                
+                document.getElementById('totalUploads').textContent = uploads;
+                document.getElementById('rejectedCount').textContent = rejected;
+                document.getElementById('uniqueUsers').textContent = users;
+                document.getElementById('todayCount').textContent = todayLogs;
+            }
+            
+            function filterLogs() {
+                const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+                const filteredLogs = allLogs.filter(log => log.toLowerCase().includes(searchTerm));
+                displayLogs(filteredLogs);
+            }
+            
+            // Sayfa yüklendiğinde logları getir
+            loadLogs();
+            
+            // Her 30 saniyede bir otomatik yenile
+            setInterval(loadLogs, 30000);
         </script>
     </body>
     </html>

@@ -169,10 +169,33 @@ function testBackend() {
 
 function handleUpload(event) {
     event.preventDefault();
+
+    // İsim kontrolü - ZORUNLU
+    var uploaderName = document.getElementById('uploaderName');
+    if (!uploaderName || !uploaderName.value.trim()) {
+        showMessage('⚠️ Lütfen adınızı yazın! İsim zorunludur.', 'error');
+        if (uploaderName) {
+            uploaderName.focus();
+            uploaderName.style.border = '2px solid #ff4757';
+            setTimeout(() => {
+                uploaderName.style.border = '';
+            }, 3000);
+        }
+        return false;
+    }
+
+    // İsim uzunluk kontrolü
+    if (uploaderName.value.trim().length < 2) {
+        showMessage('⚠️ İsim en az 2 karakter olmalıdır!', 'error');
+        uploaderName.focus();
+        return false;
+    }
+
     if (isUploading || !selectedFiles || selectedFiles.length === 0) {
         showMessage(' Önce dosya seçin!', 'error');
         return false;
     }
+
     startUpload();
     return false;
 }
