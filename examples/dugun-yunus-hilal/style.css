@@ -1484,3 +1484,21 @@ body::before {
     margin-top: 8px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
+
+/* Required Field Styling */
+.form-input[required] {
+    border-left: 4px solid #f59e0b;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.form-input[required]:focus {
+    border-left-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2), inset -3px 0 0 rgba(249, 115, 22, 0.3);
+}
+
+.form-label span:after {
+    content: " *";
+    color: #f59e0b;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
