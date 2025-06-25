@@ -367,55 +367,70 @@ function validateFile(file) {
 // Dosya sıkıştırma fonksiyonu
 function compressImage(file, maxWidth, quality) {
     return new Promise(function (resolve, reject) {
-        // Video dosyalarını sıkıştırma
-        if (file.type.startsWith('video/') || file.name.toLowerCase().match(/\.(mp4|mov|avi)$/)) {
+        var isVideo = file.type.startsWith('video/') || file.name.toLowerCase().match(/\.(mp4|mov|avi|mkv|webm)$/);
+
+        // Video dosyalarını veya HEIC dosyalarını sıkıştırma (tarayıcı desteği yok)
+        if (isVideo || file.name.toLowerCase().match(/\.(heic|heif)$/)) {
+            console.log('⏩ Sıkıştırma atlanıyor (video/heic):', file.name);
             resolve(file);
             return;
         }
 
         // Küçük dosyaları sıkıştırma (1MB altı)
         if (file.size < 1024 * 1024) {
+            console.log('⏩ Sıkıştırma atlanıyor (küçük dosya):', file.name);
             resolve(file);
             return;
         }
 
+        console.log('⏳ Resim sıkıştırılıyor:', file.name);
         var canvas = document.createElement('canvas');
         var ctx = canvas.getContext('2d');
         var img = new Image();
 
         img.onload = function () {
-            // Yeni boyutları hesapla
-            var ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
-            var newWidth = img.width * ratio;
-            var newHeight = img.height * ratio;
+            try {
+                // Yeni boyutları hesapla
+                var ratio = Math.min(maxWidth / img.width, maxWidth / img.height, 1);
+                var newWidth = img.width * ratio;
+                var newHeight = img.height * ratio;
 
-            canvas.width = newWidth;
-            canvas.height = newHeight;
+                canvas.width = newWidth;
+                canvas.height = newHeight;
 
-            // Resmi çiz
-            ctx.drawImage(img, 0, 0, newWidth, newHeight);
+                // Resmi çiz
+                ctx.drawImage(img, 0, 0, newWidth, newHeight);
 
-            // Blob'a çevir
-            canvas.toBlob(function (blob) {
-                if (blob) {
-                    // Dosya adını koru ama sıkıştırıldığını belirt
-                    blob.name = file.name;
-                    blob.lastModified = file.lastModified;
-                    console.log('🗜️ Sıkıştırıldı:', file.name, 'Eski:', (file.size / 1024).toFixed(1) + 'KB', 'Yeni:', (blob.size / 1024).toFixed(1) + 'KB');
-                    resolve(blob);
-                } else {
-                    resolve(file);
-                }
-            }, file.type, quality);
+                // Blob'a çevir
+                canvas.toBlob(function (blob) {
+                    if (blob) {
+                        blob.name = file.name;
+                        blob.lastModified = file.lastModified;
+                        console.log('🗜️ Sıkıştırıldı:', file.name, 'Eski:', (file.size / 1024 / 1024).toFixed(1) + 'MB', 'Yeni:', (blob.size / 1024 / 1024).toFixed(1) + 'MB');
+                        resolve(blob);
+                    } else {
+                        console.warn('⚠️ Sıkıştırma başarısız (blob null), orijinal dosya kullanılıyor.');
+                        resolve(file);
+                    }
+                }, 'image/jpeg', quality);
+            } catch (e) {
+                console.error('❌ Sıkıştırma sırasında canvas hatası:', e);
+                resolve(file); // Hata olursa orijinal dosyayla devam et
+            }
         };
 
         img.onerror = function () {
+            console.error('❌ Resim yüklenemedi, sıkıştırma atlanıyor:', file.name);
             resolve(file);
         };
 
         var reader = new FileReader();
         reader.onload = function (e) {
             img.src = e.target.result;
+        };
+        reader.onerror = function (e) {
+            console.error('❌ FileReader hatası:', e);
+            resolve(file);
         };
         reader.readAsDataURL(file);
     });

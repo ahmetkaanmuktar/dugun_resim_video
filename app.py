@@ -87,8 +87,8 @@ def backup_to_drive(filepath, filename):
             
             credentials = service_account.Credentials.from_service_account_info(
                 json_data, scopes=SCOPES)
-            
-            service = build('drive', 'v3', credentials=credentials)
+    
+    service = build('drive', 'v3', credentials=credentials)
             
             # Önce klasörün erişilebilir olup olmadığını kontrol et
             try:
@@ -98,14 +98,14 @@ def backup_to_drive(filepath, filename):
                 print(f"Klasör erişim hatası: {e}")
                 return None
                 
-            file_metadata = {
-                'name': filename,
-                'parents': [FOLDER_ID]
-            }
-            media = MediaFileUpload(filepath, resumable=True)
-            file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    file_metadata = {
+        'name': filename,
+        'parents': [FOLDER_ID]
+    }
+    media = MediaFileUpload(filepath, resumable=True)
+    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
             print(f"Drive yedekleme başarılı: {filename} -> {file.get('id')}")
-            return file.get('id')
+    return file.get('id')
         except Exception as e:
             print(f"Drive yedekleme hatası (kimlik bilgileri): {e}")
             return None
