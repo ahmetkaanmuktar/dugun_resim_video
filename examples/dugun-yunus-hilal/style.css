@@ -913,31 +913,36 @@ body::before {
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Mobile Responsive Design - Enhanced for readability */
+/* Mobile-First Universal Design - Works on All Devices */
 @media (max-width: 768px) {
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-attachment: fixed;
+    }
+
     body::before {
         display: none;
         /* Arkaplan efektlerini kaldır */
     }
 
     .container {
-        padding: 10px 8px;
+        padding: 15px 10px;
     }
 
     .main-card {
         background: rgba(255, 255, 255, 0.95);
-        /* Neredeyse opak beyaz */
         backdrop-filter: none;
-        /* Blur efektini kaldır */
-        padding: 20px 15px;
-        border-radius: 16px;
+        padding: 25px 20px;
+        border-radius: 20px;
         border: none;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        margin-bottom: 20px;
     }
 
+    /* Header - Mobile Optimized */
     .header .emoji {
         font-size: 3.5rem;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
     }
 
     .header h1 {
@@ -945,60 +950,113 @@ body::before {
         text-shadow: none;
         color: #333;
         font-weight: 700;
+        margin-bottom: 10px;
     }
 
     .header p {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         text-shadow: none;
         color: #555;
+        margin-bottom: 20px;
     }
 
+    /* Upload Section - Universal Mobile */
     .upload-section {
         background: #f8f9fa;
         backdrop-filter: none;
-        padding: 20px 15px;
-        border: 1px solid #e9ecef;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 25px 20px;
+        border: 2px solid #e9ecef;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        margin-bottom: 25px;
+    }
+
+    /* File Input - Simplified for All Mobile */
+    .file-input-wrapper {
+        position: relative;
+        margin-bottom: 25px;
     }
 
     .file-input-label {
-        padding: 25px 20px;
-        border: 2px dashed #8b5cf6;
-        background: #8b5cf6;
+        display: block;
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        padding: 30px 25px;
+        border-radius: 16px;
+        text-align: center;
+        cursor: pointer;
+        border: 3px dashed rgba(255, 255, 255, 0.5);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 24px rgba(139, 92, 246, 0.25);
+
+        /* Mobile touch optimization */
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .file-input-label:active {
+        transform: scale(0.98);
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
     }
 
     .file-input-label i {
         font-size: 3rem;
+        margin-bottom: 15px;
+        display: block;
     }
 
     .file-input-label .main-text {
         font-size: 1.4rem;
         text-shadow: none;
         font-weight: 600;
+        margin-bottom: 8px;
+        display: block;
     }
 
     .file-input-label .sub-text {
         font-size: 1rem;
         text-shadow: none;
         opacity: 0.9;
+        display: block;
     }
 
+    /* File Input - Universal positioning */
+    #fileInput {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        opacity: 0 !important;
+        cursor: pointer !important;
+        z-index: 2 !important;
+    }
+
+    /* Thumbnails - Mobile Optimized */
     #previewContainer {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 15px;
+        padding: 10px;
     }
 
     .thumbnail-image {
-        height: 120px;
-        border: 1px solid #e9ecef;
+        height: 110px;
+        border: 2px solid #e9ecef;
         background: white;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
     }
 
     .thumbnail-info {
         background: #f8f9fa;
         backdrop-filter: none;
-        padding: 6px;
+        padding: 8px;
+        border-radius: 0 0 12px 12px;
     }
 
     .file-name {
@@ -1013,94 +1071,86 @@ body::before {
         color: #666;
     }
 
+    /* Remove Button - Mobile Friendly */
+    .remove-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8rem;
+        top: -12px;
+        right: -12px;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        border: 2px solid white;
+    }
+
+    /* Upload Button - Mobile Optimized */
     .upload-btn {
-        font-size: 1.1rem;
-        padding: 18px 25px;
-        border-radius: 12px;
-        font-weight: 600;
-        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-    }
-
-    .modal-content {
-        padding: 25px 20px;
+        font-size: 1.2rem;
+        padding: 20px 30px;
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.98);
-        border: none;
-        color: #333;
-    }
-
-    .modal-header h3 {
-        color: #333;
-        text-shadow: none;
-        font-size: 1.5rem;
-    }
-
-    .progress-text {
-        color: #333;
-        font-size: 1rem;
         font-weight: 600;
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
+        min-height: 60px;
+        width: 100%;
     }
 
-    .progress-message {
-        color: #555;
-        font-size: 0.9rem;
-    }
-
-    .message-toast {
-        right: 10px;
-        left: 10px;
-        max-width: none;
-        background: rgba(255, 255, 255, 0.98);
-        border: 1px solid #e9ecef;
-        color: #333;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    }
-
-    .qr-section {
+    /* User Info Section */
+    .user-info-section {
         background: #f8f9fa;
         backdrop-filter: none;
-        padding: 25px 15px;
-        border: 1px solid #e9ecef;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 2px solid #e9ecef;
+        padding: 20px 15px;
+        border-radius: 16px;
+        margin-bottom: 25px;
     }
 
-    .qr-section h3 {
-        font-size: 1.4rem;
+    .form-label {
+        font-size: 1rem;
         text-shadow: none;
         color: #333;
         font-weight: 600;
+        margin-bottom: 10px;
     }
 
-    .qr-section p {
-        font-size: 1rem;
+    .form-input {
+        background: white;
+        border: 2px solid #e9ecef;
+        font-size: 1.1rem;
+        padding: 15px 18px;
+        color: #333;
+        border-radius: 12px;
+        min-height: 50px;
+    }
+
+    .form-input::placeholder {
+        color: #999;
+    }
+
+    .form-input:focus {
+        background: white;
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .form-hint {
+        color: #666;
+        font-size: 0.9rem;
         text-shadow: none;
-        color: #555;
+        margin-top: 8px;
     }
 
-    .share-buttons {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .share-btn {
-        width: 100%;
-        justify-content: center;
-        font-size: 0.95rem;
-        padding: 14px 20px;
-        font-weight: 600;
-        border-radius: 10px;
-    }
-
+    /* File Stats */
     .file-stats {
         background: #f8f9fa;
         backdrop-filter: none;
-        border: 1px solid #e9ecef;
-        padding: 15px;
-        gap: 10px;
+        border: 2px solid #e9ecef;
+        padding: 18px;
+        gap: 12px;
+        border-radius: 12px;
+        margin-bottom: 25px;
     }
 
     .stat-item {
-        font-size: 0.9rem;
+        font-size: 1rem;
         color: #333;
         text-shadow: none;
         font-weight: 500;
@@ -1111,47 +1161,94 @@ body::before {
     }
 
     .clear-all-btn {
-        font-size: 0.85rem;
-        padding: 10px 16px;
+        font-size: 0.9rem;
+        padding: 12px 18px;
+        border-radius: 10px;
+        min-height: 44px;
     }
 
-    .user-info-section {
+    /* Modal - Mobile Optimized */
+    .modal-content {
+        padding: 30px 25px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.98);
+        border: none;
+        color: #333;
+        margin: 20px;
+        width: calc(100% - 40px);
+        max-width: none;
+    }
+
+    .modal-header h3 {
+        color: #333;
+        text-shadow: none;
+        font-size: 1.6rem;
+    }
+
+    .progress-text {
+        color: #333;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .progress-message {
+        color: #555;
+        font-size: 1rem;
+    }
+
+    /* Toast Messages */
+    .message-toast {
+        right: 15px;
+        left: 15px;
+        max-width: none;
+        background: rgba(255, 255, 255, 0.98);
+        border: 2px solid #e9ecef;
+        color: #333;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        padding: 18px 20px;
+        border-radius: 12px;
+    }
+
+    /* QR Section */
+    .qr-section {
         background: #f8f9fa;
         backdrop-filter: none;
-        border: 1px solid #e9ecef;
-        padding: 20px 15px;
+        padding: 25px 20px;
+        border: 2px solid #e9ecef;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        border-radius: 16px;
+        margin-bottom: 25px;
     }
 
-    .form-label {
-        font-size: 0.95rem;
+    .qr-section h3 {
+        font-size: 1.5rem;
         text-shadow: none;
         color: #333;
         font-weight: 600;
     }
 
-    .form-input {
-        background: white;
-        border: 2px solid #e9ecef;
-        font-size: 1rem;
-        padding: 12px 16px;
-        color: #333;
-    }
-
-    .form-input::placeholder {
-        color: #999;
-    }
-
-    .form-input:focus {
-        background: white;
-        border-color: #8b5cf6;
-    }
-
-    .form-hint {
-        color: #666;
-        font-size: 0.85rem;
+    .qr-section p {
+        font-size: 1.1rem;
         text-shadow: none;
+        color: #555;
     }
 
+    .share-buttons {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .share-btn {
+        width: 100%;
+        justify-content: center;
+        font-size: 1rem;
+        padding: 16px 24px;
+        font-weight: 600;
+        border-radius: 12px;
+        min-height: 50px;
+    }
+
+    /* Footer */
     .footer-content {
         color: #333;
     }
@@ -1159,33 +1256,39 @@ body::before {
     .social-link {
         background: #f8f9fa;
         color: #333;
-        border: 1px solid #e9ecef;
+        border: 2px solid #e9ecef;
         backdrop-filter: none;
+        padding: 15px 20px;
+        border-radius: 12px;
     }
 
     .copyright {
         color: #666;
         text-shadow: none;
     }
-
-    /* Remove button daha görünür */
-    .remove-btn {
-        width: 28px;
-        height: 28px;
-        font-size: 0.8rem;
-        top: -10px;
-        right: -10px;
-        box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);
-    }
 }
 
+/* Extra Small Mobile Devices */
 @media (max-width: 480px) {
+    .container {
+        padding: 10px 8px;
+    }
+
+    .main-card {
+        padding: 20px 15px;
+    }
+
     .header h1 {
-        font-size: 1.9rem;
+        font-size: 2rem;
     }
 
     .header p {
-        font-size: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .file-input-label {
+        padding: 25px 20px;
+        min-height: 100px;
     }
 
     .file-input-label .main-text {
@@ -1193,30 +1296,25 @@ body::before {
     }
 
     .file-input-label .sub-text {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
     }
 
     #previewContainer {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+        gap: 12px;
     }
 
     .thumbnail-image {
-        height: 100px;
+        height: 95px;
     }
 
-    .file-stats {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .stat-item {
-        text-align: center;
-        padding: 5px;
+    .upload-btn {
+        font-size: 1.1rem;
+        padding: 18px 25px;
     }
 
     .qr-section {
-        padding: 20px 12px;
+        padding: 20px 15px;
     }
 
     .qr-code {
@@ -1224,17 +1322,10 @@ body::before {
     }
 }
 
+/* Very Small Devices */
 @media (max-width: 320px) {
     .header h1 {
-        font-size: 1.7rem;
-    }
-
-    #previewContainer {
-        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    }
-
-    .thumbnail-image {
-        height: 90px;
+        font-size: 1.8rem;
     }
 
     .file-input-label .main-text {
@@ -1242,7 +1333,15 @@ body::before {
     }
 
     .file-input-label .sub-text {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
+    }
+
+    #previewContainer {
+        grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    }
+
+    .thumbnail-image {
+        height: 85px;
     }
 }
 
