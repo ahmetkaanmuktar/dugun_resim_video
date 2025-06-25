@@ -150,13 +150,18 @@ def uploaded_file(filename):
 def upload_file():
     try:
         print("\n--- UPLOAD BAŞLATILIYOR ---")
+        print(f"Request method: {request.method}")
+        print(f"Content-Type: {request.content_type}")
+        print(f"User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
         print(f"Request files: {request.files}")
         print(f"Request form: {request.form}")
+        print(f"Request headers: {dict(request.headers)}")
         
         if 'file' not in request.files:
             print("Hata: 'file' anahtarı bulunamadı")
             print(f"Available keys: {list(request.files.keys())}")
-            return jsonify({'error': 'Dosya bulunamadı'}), 400
+            print(f"Raw data length: {len(request.get_data())}")
+            return jsonify({'error': 'Dosya bulunamadı', 'debug': {'available_keys': list(request.files.keys()), 'content_type': request.content_type}}), 400
         
         file = request.files['file']
         uploader_name = request.form.get('uploader_name', '').strip()

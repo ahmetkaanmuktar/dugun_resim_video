@@ -95,44 +95,64 @@ function setupFileInput() {
 
     // Label click - dosya eklemek için
     label.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
+        console.log('🖱️ Label clicked - Platform:', isMobile ? 'Mobile' : 'Desktop');
 
         if (isUploading) {
             showMessage('⏳ Yükleme devam ediyor...', 'warning');
             return;
         }
 
-        console.log('🖱️ Label clicked - opening file picker');
-        triggerFileInput();
+        // Mobil için direkt input'a yönlendir
+        if (isMobile) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Direct file input trigger - mobil için en güvenilir yöntem
+            var fileInput = document.getElementById('fileInput');
+            fileInput.style.position = 'fixed';
+            fileInput.style.top = '50%';
+            fileInput.style.left = '50%';
+            fileInput.style.transform = 'translate(-50%, -50%)';
+            fileInput.style.width = '200px';
+            fileInput.style.height = '50px';
+            fileInput.style.opacity = '1';
+            fileInput.style.zIndex = '9999';
+            fileInput.style.background = 'rgba(139, 92, 246, 0.1)';
+            fileInput.style.border = '2px dashed #8b5cf6';
+            fileInput.style.borderRadius = '10px';
+
+            setTimeout(function () {
+                fileInput.click();
+
+                setTimeout(function () {
+                    fileInput.style.position = 'absolute';
+                    fileInput.style.opacity = '0';
+                    fileInput.style.left = '0';
+                    fileInput.style.top = '0';
+                    fileInput.style.zIndex = '1';
+                    fileInput.style.background = 'transparent';
+                    fileInput.style.border = 'none';
+                    fileInput.style.transform = 'none';
+                }, 300);
+            }, 100);
+        } else {
+            triggerFileInput();
+        }
     });
 
-    // Touch events için optimizasyon - Daha güvenilir
+    // Mobil için sadece basit visual feedback
     if (isIOS || isMobile) {
         label.addEventListener('touchstart', function (e) {
             console.log('📱 Touch start');
             label.style.transform = 'scale(0.98)';
+            label.style.opacity = '0.9';
         }, { passive: true });
 
         label.addEventListener('touchend', function (e) {
             console.log('📱 Touch end');
-            e.preventDefault();
             label.style.transform = 'scale(1)';
-
-            if (!isUploading) {
-                console.log('📱 Triggering file input...');
-                fileInput.click();
-            }
-        });
-
-        // Mobil için ekstra click handler
-        label.addEventListener('click', function (e) {
-            console.log('📱 Label clicked on mobile');
-            if (isMobile && !isUploading) {
-                e.preventDefault();
-                fileInput.click();
-            }
-        });
+            label.style.opacity = '1';
+        }, { passive: true });
     }
 
     // Drag & Drop - sadece desktop'ta
@@ -144,23 +164,37 @@ function setupFileInput() {
 function triggerFileInput() {
     var fileInput = document.getElementById('fileInput');
 
-    if (isIOS) {
-        // iOS'da özel file picker açma
-        fileInput.style.position = 'static';
-        fileInput.style.left = 'auto';
-        fileInput.style.opacity = '1';
-        fileInput.style.pointerEvents = 'auto';
+    console.log('🎯 File input trigger - Platform:', isIOS ? 'iOS' : isMobile ? 'Mobile' : 'Desktop');
 
-        setTimeout(function () {
-            fileInput.click();
+    // Mobil için basit ve güvenilir yaklaşım
+    if (isMobile) {
+        try {
+            // Input'u görünür yap
+            fileInput.style.position = 'static';
+            fileInput.style.opacity = '1';
+            fileInput.style.visibility = 'visible';
+            fileInput.style.width = '100%';
+            fileInput.style.height = '50px';
+            fileInput.style.zIndex = '999';
 
+            // Trigger click
             setTimeout(function () {
-                fileInput.style.position = 'absolute';
-                fileInput.style.left = '-9999px';
-                fileInput.style.opacity = '0';
-                fileInput.style.pointerEvents = 'none';
+                fileInput.click();
+                console.log('📱 Mobile click triggered');
+
+                // Geri gizle
+                setTimeout(function () {
+                    fileInput.style.position = 'absolute';
+                    fileInput.style.opacity = '0';
+                    fileInput.style.visibility = 'hidden';
+                    fileInput.style.left = '0';
+                    fileInput.style.top = '0';
+                    fileInput.style.zIndex = '1';
+                }, 200);
             }, 100);
-        }, 50);
+        } catch (error) {
+            console.error('📱 Mobile trigger error:', error);
+        }
     } else {
         fileInput.click();
     }
@@ -656,6 +690,9 @@ function uploadSingleFile(file, fileIndex, totalFiles) {
         });
 
         xhr.addEventListener('load', function () {
+            console.log('📡 Upload response - Status:', xhr.status, 'File:', file.name);
+            console.log('📡 Response text:', xhr.responseText);
+
             if (xhr.status === 200) {
                 try {
                     var response = JSON.parse(xhr.responseText);
@@ -666,19 +703,26 @@ function uploadSingleFile(file, fileIndex, totalFiles) {
                         response: response
                     });
                 } catch (error) {
-                    console.error('❌ Parse hatası:', file.name);
+                    console.error('❌ Parse hatası:', file.name, error);
+                    console.error('❌ Raw response:', xhr.responseText);
                     reject({
                         success: false,
                         file: file,
-                        error: 'Sunucu yanıtı okunamadı'
+                        error: 'Sunucu yanıtı okunamadı: ' + error.message
                     });
                 }
             } else {
-                console.error('❌ HTTP hatası:', file.name, xhr.status);
+                console.error('❌ HTTP hatası:', file.name, xhr.status, xhr.responseText);
+                try {
+                    var errorResponse = JSON.parse(xhr.responseText);
+                    console.error('❌ Server error details:', errorResponse);
+                } catch (e) {
+                    console.error('❌ Cannot parse error response');
+                }
                 reject({
                     success: false,
                     file: file,
-                    error: 'Sunucu hatası: ' + xhr.status
+                    error: 'Sunucu hatası: ' + xhr.status + ' - ' + xhr.responseText
                 });
             }
         });
