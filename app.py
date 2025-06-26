@@ -579,6 +579,87 @@ def gallery_view():
     </html>
     '''
 
+@app.route('/admin')
+def admin_panel():
+    """Ana admin paneli"""
+    return '''
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🔧 Admin Paneli</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Segoe UI', sans-serif; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh; color: white; padding: 20px;
+            }
+            .container { max-width: 1000px; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 40px; }
+            .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+            .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+            .card {
+                background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+                border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.2);
+                transition: all 0.3s ease; text-decoration: none; color: white;
+            }
+            .card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.15); }
+            .card i { font-size: 2.5rem; margin-bottom: 20px; display: block; }
+            .card h3 { font-size: 1.3rem; margin-bottom: 10px; }
+            .card p { opacity: 0.9; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1><i class="fas fa-cog"></i> Admin Paneli</h1>
+                <p>Düğün sistemi yönetim paneli</p>
+            </div>
+            
+            <div class="cards">
+                <a href="/admin/wedding-codes" class="card">
+                    <i class="fas fa-heart" style="color: #ff6b6b;"></i>
+                    <h3>Düğün Yönetimi</h3>
+                    <p>Düğün kodları oluştur, görüntüle ve yönet</p>
+                </a>
+                
+                <a href="/admin/codes-dashboard" class="card">
+                    <i class="fas fa-chart-bar" style="color: #10b981;"></i>
+                    <h3>İstatistikler</h3>
+                    <p>Düğün kodları ve kullanım istatistikleri</p>
+                </a>
+                
+                <a href="/admin/security-dashboard" class="card">
+                    <i class="fas fa-shield-alt" style="color: #f59e0b;"></i>
+                    <h3>Güvenlik</h3>
+                    <p>Güvenlik logları ve sistem izleme</p>
+                </a>
+                
+                <a href="/wedding-owner/dashboard" class="card">
+                    <i class="fas fa-users" style="color: #3b82f6;"></i>
+                    <h3>Düğün Sahibi Paneli</h3>
+                    <p>Genel kullanıcı paneli görünümü</p>
+                </a>
+            </div>
+        </div>
+        
+        <script>
+            // Auth kontrol
+            const adminToken = 'admin-security-key-2025';
+            const authHeader = 'Bearer ' + adminToken;
+            
+            // Sayfa yüklendiğinde admin kontrolü
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('Admin paneli yüklendi');
+            });
+        </script>
+    </body>
+    </html>
+    '''
+
 @app.route('/admin/security-logs', methods=['GET'])
 def security_logs():
     """Admin güvenlik logları - Gizli endpoint"""
