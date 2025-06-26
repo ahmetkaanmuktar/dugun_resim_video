@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import logging
 from datetime import datetime
+import math
 
 app = Flask(__name__)
 CORS(app, 
@@ -114,14 +115,18 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def backup_to_drive(filepath, filename):
-    """Dosyayı Drive'a yedekle (opsiyonel)"""
+    """Dosyayı ana Drive klasörüne yedekle (geriye uyumluluk)"""
+    return backup_to_drive_folder(filepath, filename, FOLDER_ID)
+
+def backup_to_drive_folder(filepath, filename, folder_id):
+    """Dosyayı belirtilen Drive klasörüne yedekle"""
     try:
-        print(f"Drive'a yedekleme başlatılıyor: {filename}")
+        print(f"Drive'a yedekleme başlatılıyor: {filename} -> {folder_id}")
         # Doğrudan SERVICE_ACCOUNT_JSON değişkeninden kimlik bilgilerini al
         try:
             json_data = json.loads(SERVICE_ACCOUNT_JSON)
             print(f"Servis hesabı: {json_data.get('client_email')}")
-            print(f"Klasör ID: {FOLDER_ID}")
+            print(f"Hedef klasör ID: {folder_id}")
             
             credentials = service_account.Credentials.from_service_account_info(
                 json_data, scopes=SCOPES)
@@ -130,15 +135,15 @@ def backup_to_drive(filepath, filename):
             
             # Önce klasörün erişilebilir olup olmadığını kontrol et
             try:
-                folder_info = service.files().get(fileId=FOLDER_ID, fields='id,name').execute()
-                print(f"Klasör bulundu: {folder_info.get('name', 'Unknown')}")
+                folder_info = service.files().get(fileId=folder_id, fields='id,name').execute()
+                print(f"Hedef klasör bulundu: {folder_info.get('name', 'Unknown')}")
             except Exception as e:
                 print(f"Klasör erişim hatası: {e}")
                 return None
                 
             file_metadata = {
                 'name': filename,
-                'parents': [FOLDER_ID]
+                'parents': [folder_id]
             }
             media = MediaFileUpload(filepath, resumable=True)
             file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
@@ -269,7 +274,19 @@ def upload_file():
             
             # Drive'a yedekleme (opsiyonel - hata olursa da devam eder)
             print(f"Drive'a yedekleme başlatılıyor...")
-            drive_id = backup_to_drive(filepath, unique_filename)
+            
+            # Düğün kodunu form'dan al (eğer varsa)
+            wedding_code = request.form.get('wedding_code', '').strip()
+            drive_folder_id = FOLDER_ID  # Default ana klasör
+            
+            # Eğer düğün kodu belirtilmişse, o düğünün klasörüne yükle
+            if wedding_code:
+                wedding_info = get_wedding_info(wedding_code)
+                if wedding_info and wedding_info.get('drive_folder_id'):
+                    drive_folder_id = wedding_info['drive_folder_id']
+                    print(f"Düğün klasörüne yükleniyor: {wedding_code} -> {drive_folder_id}")
+            
+            drive_id = backup_to_drive_folder(filepath, unique_filename, drive_folder_id)
             drive_status = "backed_up" if drive_id else "local_only"
             print(f"Drive yedekleme durumu: {drive_status}, Drive ID: {drive_id}")
             
@@ -1190,7 +1207,7 @@ def admin_wedding_codes():
 
 @app.route('/admin/wedding-codes', methods=['POST'])
 def admin_add_wedding_code():
-    """Admin - Yeni düğün kodu ekle"""
+    """Admin - Yeni düğün kodu ekle + Otomatik Drive klasörü ve site oluştur"""
     try:
         # Admin güvenlik kontrolü
         auth_header = request.headers.get('Authorization')
@@ -1219,12 +1236,24 @@ def admin_add_wedding_code():
         if code in codes_data:
             return jsonify({'success': False, 'error': 'Bu kod zaten mevcut'}), 400
         
+        # ✨ Drive klasörü oluştur
+        drive_folder_id = None
+        try:
+            drive_folder_id = create_wedding_drive_folder(name, code)
+            print(f"✅ Drive klasörü oluşturuldu: {drive_folder_id}")
+        except Exception as e:
+            print(f"⚠️ Drive klasörü oluşturulamadı: {e}")
+        
         # Yeni kod ekle
         codes_data[code] = {
             'name': name,
             'created_date': datetime.now().strftime('%Y-%m-%d'),
             'status': 'active',
-            'usage_count': 0
+            'usage_count': 0,
+            'drive_folder_id': drive_folder_id,
+            'website_url': f'/wedding/{code}',
+            'upload_url': f'/wedding/{code}/upload',
+            'gallery_url': f'/wedding/{code}/gallery'
         }
         
         # Dosyayı güncelle
@@ -1232,20 +1261,56 @@ def admin_add_wedding_code():
             json.dump(codes_data, f, ensure_ascii=False, indent=2)
         
         # Güvenlik loguna kaydet
-        log_security_event("WEDDING_CODE_CREATED", "admin", code, 
+        log_security_event("WEDDING_CREATED", "admin", code, 
                          request.headers.get('X-Forwarded-For', request.remote_addr),
                          request.headers.get('User-Agent', 'Unknown'),
-                         f"Wedding name: {name}")
+                         f"Wedding: {name}, DriveID: {drive_folder_id}")
         
         return jsonify({
             'success': True,
-            'message': f'Düğün kodu "{code}" başarıyla oluşturuldu',
+            'message': f'Düğün "{name}" başarıyla oluşturuldu!',
             'code': code,
-            'name': name
+            'name': name,
+            'drive_folder_id': drive_folder_id,
+            'website_url': f'{request.url_root}wedding/{code}',
+            'upload_url': f'{request.url_root}wedding/{code}/upload',
+            'gallery_url': f'{request.url_root}wedding/{code}/gallery'
         })
         
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Kod ekleme hatası: {str(e)}'}), 500
+        return jsonify({'success': False, 'error': f'Düğün oluşturma hatası: {str(e)}'}), 500
+
+def create_wedding_drive_folder(wedding_name, wedding_code):
+    """Düğün için özel Drive klasörü oluştur"""
+    try:
+        # Service account credentials
+        json_data = json.loads(SERVICE_ACCOUNT_JSON)
+        credentials = service_account.Credentials.from_service_account_info(
+            json_data, scopes=SCOPES)
+        service = build('drive', 'v3', credentials=credentials)
+        
+        # Ana "Düğün Fotoğrafları" klasörünün altında yeni klasör oluştur
+        folder_metadata = {
+            'name': f'{wedding_name} ({wedding_code})',
+            'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [FOLDER_ID]  # Ana klasörün altına ekle
+        }
+        
+        folder = service.files().create(body=folder_metadata, fields='id,name').execute()
+        
+        # Klasörü herkese açık yap (görüntüleme)
+        permission = {
+            'type': 'anyone',
+            'role': 'reader'
+        }
+        service.permissions().create(fileId=folder.get('id'), body=permission).execute()
+        
+        print(f"✅ Drive klasörü oluşturuldu: {folder.get('name')} - ID: {folder.get('id')}")
+        return folder.get('id')
+        
+    except Exception as e:
+        print(f"❌ Drive klasör oluşturma hatası: {e}")
+        return None
 
 @app.route('/admin/codes-dashboard', methods=['GET'])
 def admin_codes_dashboard():
@@ -1377,8 +1442,20 @@ def admin_codes_dashboard():
                                <span class="status-${info.status}">${info.status === 'active' ? 'Aktif' : 'Pasif'}</span> |
                                <span class="usage-badge">${info.usage_count} kullanım</span>
                             </p>
+                            ${info.drive_folder_id ? 
+                                `<p style="margin-top: 8px; font-size: 0.85rem;">
+                                    <i class="fab fa-google-drive" style="color: #f59e0b;"></i> Drive Klasörü: ${info.drive_folder_id.substring(0, 10)}...
+                                 </p>` : 
+                                '<p style="margin-top: 8px; font-size: 0.85rem; color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Drive klasörü oluşturulamadı</p>'
+                            }
+                            <p style="margin-top: 5px; font-size: 0.85rem;">
+                                <strong>🌐 Site:</strong> <a href="${window.location.origin}/wedding/${code}" target="_blank" style="color: #10b981;">/wedding/${code}</a>
+                            </p>
                         </div>
                         <div class="code-actions">
+                            <button class="btn" onclick="openWedding('${code}')">
+                                <i class="fas fa-external-link-alt"></i> Siteyi Aç
+                            </button>
                             <button class="btn" onclick="copyCode('${code}')">
                                 <i class="fas fa-copy"></i> Kopyala
                             </button>
@@ -1396,9 +1473,14 @@ def admin_codes_dashboard():
                 });
             }
             
+            function openWedding(code) {
+                window.open(`/wedding/${code}`, '_blank');
+            }
+            
             function shareCode(code, name) {
+                const weddingUrl = window.location.origin + `/wedding/${code}`;
                 const dashboardUrl = window.location.origin + '/wedding-owner/dashboard';
-                const message = `${name} düğün galerisi erişim bilgileri:\\n\\nAdres: ${dashboardUrl}\\nKod: ${code}\\n\\nTüm fotoğraflarınızı bu adresten görüntüleyebilirsiniz.`;
+                const message = `🎉 ${name} Düğün Galerisi\\n\\n📸 Fotoğraf Yükle & Görüntüle:\\n${weddingUrl}\\n\\n💒 Düğün Sahibi Paneli:\\n${dashboardUrl}\\nKod: ${code}\\n\\n🎊 Tüm düğün anılarını paylaşabilir ve görüntüleyebilirsiniz!`;
                 
                 if (navigator.share) {
                     navigator.share({
@@ -1454,6 +1536,504 @@ def admin_codes_dashboard():
     </body>
     </html>
     '''
+
+@app.route('/wedding/<wedding_code>')
+def wedding_website(wedding_code):
+    """Her düğün için özel ana sayfa"""
+    try:
+        # Düğün bilgilerini al
+        wedding_info = get_wedding_info(wedding_code)
+        if not wedding_info:
+            return "Düğün bulunamadı", 404
+        
+        return f'''
+        <!DOCTYPE html>
+        <html lang="tr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>💍 {wedding_info['name']} - Düğün Anıları</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                body {{ 
+                    font-family: 'Segoe UI', sans-serif; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh; color: white; overflow-x: hidden;
+                }}
+                .container {{ max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }}
+                .hero {{ 
+                    background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); 
+                    border-radius: 24px; padding: 50px 30px; margin-bottom: 30px; 
+                    border: 1px solid rgba(255,255,255,0.2); position: relative; overflow: hidden;
+                }}
+                .hero::before {{
+                    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+                    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+                    animation: float 6s ease-in-out infinite;
+                }}
+                .hero h1 {{ font-size: 3rem; margin-bottom: 15px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); position: relative; }}
+                .hero p {{ font-size: 1.3rem; opacity: 0.9; margin-bottom: 30px; position: relative; }}
+                .heart {{ font-size: 2rem; color: #ff6b6b; animation: heartbeat 2s ease-in-out infinite; }}
+                
+                .buttons {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+                .btn {{
+                    background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+                    border: 2px solid rgba(255,255,255,0.3); border-radius: 16px;
+                    padding: 25px 20px; color: white; text-decoration: none;
+                    transition: all 0.3s ease; position: relative; overflow: hidden;
+                }}
+                .btn:hover {{
+                    transform: translateY(-5px); background: rgba(255,255,255,0.25);
+                    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+                }}
+                .btn i {{ font-size: 2rem; margin-bottom: 15px; display: block; }}
+                .btn h3 {{ font-size: 1.2rem; margin-bottom: 8px; }}
+                .btn p {{ font-size: 0.9rem; opacity: 0.8; }}
+                
+                .qr-section {{
+                    background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+                    border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.2);
+                }}
+                .qr-code {{ 
+                    background: white; border-radius: 16px; padding: 20px; 
+                    display: inline-block; margin: 20px 0; box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+                }}
+                
+                .stats {{
+                    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                    gap: 15px; margin-top: 30px;
+                }}
+                .stat {{
+                    background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+                    border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.2);
+                }}
+                .stat-number {{ font-size: 1.8rem; font-weight: bold; margin-bottom: 5px; }}
+                .stat-label {{ font-size: 0.9rem; opacity: 0.8; }}
+                
+                @keyframes heartbeat {{ 0%, 100% {{ transform: scale(1); }} 50% {{ transform: scale(1.1); }} }}
+                @keyframes float {{ 0%, 100% {{ transform: translateY(0px) rotate(0deg); }} 50% {{ transform: translateY(-20px) rotate(180deg); }} }}
+                
+                @media (max-width: 768px) {{
+                    .hero {{ padding: 30px 20px; }}
+                    .hero h1 {{ font-size: 2.2rem; }}
+                    .hero p {{ font-size: 1.1rem; }}
+                    .buttons {{ grid-template-columns: 1fr; }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="hero">
+                    <h1><i class="fas fa-heart heart"></i> {wedding_info['name']}</h1>
+                    <p>Düğün anılarımızı buradan paylaşabilirsiniz</p>
+                    <p style="font-size: 1rem; opacity: 0.7;">Düğün Kodu: <strong>{wedding_code}</strong></p>
+                </div>
+                
+                <div class="buttons">
+                    <a href="/wedding/{wedding_code}/upload" class="btn">
+                        <i class="fas fa-cloud-upload-alt" style="color: #10b981;"></i>
+                        <h3>Fotoğraf Yükle</h3>
+                        <p>Çektiğiniz fotoğraf ve videoları buradan yükleyin</p>
+                    </a>
+                    
+                    <a href="/wedding/{wedding_code}/gallery" class="btn">
+                        <i class="fas fa-images" style="color: #3b82f6;"></i>
+                        <h3>Galeriyi Gör</h3>
+                        <p>Tüm düğün fotoğraflarını görüntüleyin</p>
+                    </a>
+                    
+                    <a href="https://drive.google.com/drive/folders/{wedding_info.get('drive_folder_id', '')}" target="_blank" class="btn">
+                        <i class="fab fa-google-drive" style="color: #f59e0b;"></i>
+                        <h3>Drive Klasörü</h3>
+                        <p>Google Drive'da tüm dosyalar</p>
+                    </a>
+                </div>
+                
+                <div class="qr-section">
+                    <h3><i class="fas fa-qrcode"></i> Bu Sayfayı Paylaş</h3>
+                    <p>QR kodu okutarak diğer konuklar da fotoğraf yükleyebilir</p>
+                    
+                    <div class="qr-code">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&format=png&data={request.url}" alt="QR Kod">
+                    </div>
+                    
+                    <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+                        🔗 <strong>{request.url}</strong>
+                    </p>
+                </div>
+                
+                <div class="stats" id="weddingStats">
+                    <div class="stat">
+                        <div class="stat-number" id="photoCount">-</div>
+                        <div class="stat-label">Fotoğraf</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="videoCount">-</div>
+                        <div class="stat-label">Video</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="uploaderCount">-</div>
+                        <div class="stat-label">Katkıda Bulunan</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="totalSize">-</div>
+                        <div class="stat-label">Toplam Boyut</div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                // İstatistikleri yükle
+                async function loadStats() {{
+                    try {{
+                        const response = await fetch('/api/wedding-stats/{wedding_code}');
+                        const data = await response.json();
+                        
+                        if (data.success) {{
+                            document.getElementById('photoCount').textContent = data.stats.photos;
+                            document.getElementById('videoCount').textContent = data.stats.videos;
+                            document.getElementById('uploaderCount').textContent = data.stats.uploaders;
+                            document.getElementById('totalSize').textContent = data.stats.total_size;
+                        }}
+                    }} catch (error) {{
+                        console.log('İstatistik yüklenemedi:', error);
+                    }}
+                }}
+                
+                loadStats();
+            </script>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        return f"Hata: {str(e)}", 500
+
+@app.route('/wedding/<wedding_code>/upload')
+def wedding_upload_page(wedding_code):
+    """Her düğün için özel upload sayfası"""
+    try:
+        wedding_info = get_wedding_info(wedding_code)
+        if not wedding_info:
+            return "Düğün bulunamadı", 404
+        
+        # Mevcut upload sayfasını düğüne özel yapılandır
+        return f'''
+        <!DOCTYPE html>
+        <html lang="tr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>📸 {wedding_info['name']} - Fotoğraf Yükleme</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                /* Mevcut style.css'i buraya kopyala ve düğüne özel yapılandır */
+                body {{ 
+                    font-family: 'Segoe UI', sans-serif; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh; padding: 20px; color: white; margin: 0;
+                }}
+                .container {{ max-width: 600px; margin: 0 auto; }}
+                .wedding-header {{
+                    text-align: center; background: rgba(255,255,255,0.1);
+                    backdrop-filter: blur(20px); border-radius: 20px; padding: 30px;
+                    margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.2);
+                }}
+                .wedding-header h1 {{ font-size: 2rem; margin-bottom: 10px; }}
+                .wedding-header p {{ opacity: 0.9; }}
+                .back-btn {{
+                    position: absolute; top: 20px; left: 20px;
+                    background: rgba(255,255,255,0.2); border: none; color: white;
+                    padding: 12px 15px; border-radius: 10px; text-decoration: none;
+                    transition: all 0.3s ease;
+                }}
+                .back-btn:hover {{ background: rgba(255,255,255,0.3); }}
+            </style>
+        </head>
+        <body>
+            <a href="/wedding/{wedding_code}" class="back-btn">
+                <i class="fas fa-arrow-left"></i> Geri
+            </a>
+            
+            <div class="container">
+                <div class="wedding-header">
+                    <h1><i class="fas fa-heart" style="color: #ff6b6b;"></i> {wedding_info['name']}</h1>
+                    <p>Fotoğraf ve videolarınızı yükleyin</p>
+                </div>
+                
+                <!-- Burada normal upload form'u olacak -->
+                <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.2);">
+                    <h3 style="text-align: center; margin-bottom: 20px;">📸 Fotoğraf/Video Yükle</h3>
+                    <p style="text-align: center; margin-bottom: 30px; opacity: 0.9;">
+                        Düğün anılarınızı diğer konuklarla paylaşın
+                    </p>
+                    
+                    <!-- Upload form buraya gelecek -->
+                    <div style="text-align: center; padding: 40px; border: 2px dashed rgba(255,255,255,0.3); border-radius: 16px;">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.7;"></i>
+                        <p>Upload formu yakında aktif olacak...</p>
+                        <p style="margin-top: 10px; opacity: 0.7; font-size: 0.9rem;">
+                            Şimdilik ana upload sayfasını kullanabilirsiniz
+                        </p>
+                        <a href="https://ahmetkaanmuktar.github.io/dugun_resim_video/examples/dugun-yunus-hilal/" 
+                           style="display: inline-block; margin-top: 20px; background: #10b981; color: white; 
+                                  padding: 12px 25px; border-radius: 10px; text-decoration: none;">
+                            Ana Upload Sayfası
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        return f"Hata: {str(e)}", 500
+
+@app.route('/wedding/<wedding_code>/gallery')
+def wedding_gallery_page(wedding_code):
+    """Her düğün için özel galeri sayfası"""
+    try:
+        wedding_info = get_wedding_info(wedding_code)
+        if not wedding_info:
+            return "Düğün bulunamadı", 404
+        
+        return f'''
+        <!DOCTYPE html>
+        <html lang="tr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>🎉 {wedding_info['name']} - Galeri</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                body {{ 
+                    font-family: 'Segoe UI', sans-serif; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh; padding: 20px; color: white; margin: 0;
+                }}
+                .container {{ max-width: 1200px; margin: 0 auto; }}
+                .back-btn {{
+                    position: absolute; top: 20px; left: 20px;
+                    background: rgba(255,255,255,0.2); border: none; color: white;
+                    padding: 12px 15px; border-radius: 10px; text-decoration: none;
+                    transition: all 0.3s ease;
+                }}
+                .back-btn:hover {{ background: rgba(255,255,255,0.3); }}
+                .gallery-header {{
+                    text-align: center; background: rgba(255,255,255,0.1);
+                    backdrop-filter: blur(20px); border-radius: 20px; padding: 30px;
+                    margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.2);
+                }}
+                .gallery-grid {{
+                    display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                    gap: 20px; padding: 20px; background: rgba(255,255,255,0.1);
+                    backdrop-filter: blur(20px); border-radius: 20px;
+                    border: 1px solid rgba(255,255,255,0.2);
+                }}
+                .photo-item {{
+                    background: rgba(255,255,255,0.1); border-radius: 12px;
+                    overflow: hidden; transition: all 0.3s ease; cursor: pointer;
+                }}
+                .photo-item:hover {{ transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }}
+                .photo-item img {{ width: 100%; height: 200px; object-fit: cover; }}
+                .photo-info {{ padding: 15px; }}
+                .loading {{ text-align: center; padding: 50px; opacity: 0.8; }}
+            </style>
+        </head>
+        <body>
+            <a href="/wedding/{wedding_code}" class="back-btn">
+                <i class="fas fa-arrow-left"></i> Geri
+            </a>
+            
+            <div class="container">
+                <div class="gallery-header">
+                    <h1><i class="fas fa-images"></i> {wedding_info['name']} Galerisi</h1>
+                    <p>Tüm düğün anılarını burada görüntüleyebilirsiniz</p>
+                </div>
+                
+                <div class="gallery-grid" id="galleryGrid">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 15px;"></i>
+                        <p>Fotoğraflar yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                async function loadGallery() {{
+                    try {{
+                        // Drive klasöründeki dosyaları çek
+                        const response = await fetch('/api/wedding-gallery/{wedding_code}');
+                        const data = await response.json();
+                        
+                        const grid = document.getElementById('galleryGrid');
+                        
+                        if (data.success && data.files.length > 0) {{
+                            grid.innerHTML = data.files.map(file => `
+                                <div class="photo-item" onclick="window.open('${{file.webViewLink}}', '_blank')">
+                                    <img src="${{file.thumbnailLink || file.iconLink}}" alt="${{file.name}}" loading="lazy">
+                                    <div class="photo-info">
+                                        <div style="font-weight: 600; margin-bottom: 5px;">${{file.name.substring(0, 25)}}${{file.name.length > 25 ? '...' : ''}}</div>
+                                        <div style="font-size: 0.9rem; opacity: 0.8;">${{formatFileSize(file.size || 0)}}</div>
+                                    </div>
+                                </div>
+                            `).join('');
+                        }} else {{
+                            grid.innerHTML = '<div class="loading"><p>Henüz fotoğraf yüklenmemiş</p></div>';
+                        }}
+                    }} catch (error) {{
+                        document.getElementById('galleryGrid').innerHTML = '<div class="loading"><p>Galeri yüklenemedi</p></div>';
+                    }}
+                }}
+                
+                function formatFileSize(bytes) {{
+                    if (bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                }}
+                
+                loadGallery();
+            </script>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        return f"Hata: {str(e)}", 500
+
+def get_wedding_info(wedding_code):
+    """Düğün bilgilerini kod dosyasından al"""
+    try:
+        codes_file = 'uploads/wedding_codes.json'
+        if os.path.exists(codes_file):
+            with open(codes_file, 'r', encoding='utf-8') as f:
+                codes_data = json.load(f)
+            return codes_data.get(wedding_code)
+        return None
+    except Exception as e:
+        print(f"Düğün bilgisi alma hatası: {e}")
+        return None
+
+@app.route('/api/wedding-stats/<wedding_code>')
+def wedding_stats_api(wedding_code):
+    """Düğün istatistikleri API"""
+    try:
+        wedding_info = get_wedding_info(wedding_code)
+        if not wedding_info:
+            return jsonify({'success': False, 'error': 'Düğün bulunamadı'}), 404
+        
+        # Drive klasöründeki dosyaları al
+        drive_folder_id = wedding_info.get('drive_folder_id')
+        if not drive_folder_id:
+            return jsonify({
+                'success': True,
+                'stats': {'photos': 0, 'videos': 0, 'uploaders': 0, 'total_size': '0 MB'}
+            })
+        
+        try:
+            json_data = json.loads(SERVICE_ACCOUNT_JSON)
+            credentials = service_account.Credentials.from_service_account_info(
+                json_data, scopes=SCOPES)
+            service = build('drive', 'v3', credentials=credentials)
+            
+            # Klasördeki dosyaları listele
+            results = service.files().list(
+                q=f"parents in '{drive_folder_id}' and (mimeType contains 'image/' or mimeType contains 'video/')",
+                pageSize=1000,
+                fields="files(id, name, mimeType, size)"
+            ).execute()
+            
+            files = results.get('files', [])
+            photos = len([f for f in files if f.get('mimeType', '').startswith('image/')])
+            videos = len([f for f in files if f.get('mimeType', '').startswith('video/')])
+            
+            # Kullanıcı sayısı (dosya adından çıkar)
+            uploaders = set()
+            total_size = 0
+            
+            for file in files:
+                # Dosya boyutu
+                size = int(file.get('size', 0))
+                total_size += size
+                
+                # Uploader (dosya adının başındaki isim)
+                name = file.get('name', '')
+                match = name.split('_')[0] if '_' in name else 'Anonim'
+                uploaders.add(match)
+            
+            # Boyutu formatla
+            def format_size(bytes):
+                if bytes == 0:
+                    return '0 B'
+                k = 1024
+                sizes = ['B', 'KB', 'MB', 'GB']
+                i = min(int(math.log(bytes) / math.log(k)), len(sizes) - 1)
+                return f"{round(bytes / (k ** i), 1)} {sizes[i]}"
+            
+            return jsonify({
+                'success': True,
+                'stats': {
+                    'photos': photos,
+                    'videos': videos,
+                    'uploaders': len(uploaders),
+                    'total_size': format_size(total_size)
+                }
+            })
+            
+        except Exception as e:
+            print(f"Drive istatistik hatası: {e}")
+            return jsonify({
+                'success': True,
+                'stats': {'photos': 0, 'videos': 0, 'uploaders': 0, 'total_size': '0 MB'}
+            })
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/wedding-gallery/<wedding_code>')
+def wedding_gallery_api(wedding_code):
+    """Düğün galeri API"""
+    try:
+        wedding_info = get_wedding_info(wedding_code)
+        if not wedding_info:
+            return jsonify({'success': False, 'error': 'Düğün bulunamadı'}), 404
+        
+        drive_folder_id = wedding_info.get('drive_folder_id')
+        if not drive_folder_id:
+            return jsonify({'success': True, 'files': []})
+        
+        try:
+            json_data = json.loads(SERVICE_ACCOUNT_JSON)
+            credentials = service_account.Credentials.from_service_account_info(
+                json_data, scopes=SCOPES)
+            service = build('drive', 'v3', credentials=credentials)
+            
+            # Klasördeki dosyaları listele
+            results = service.files().list(
+                q=f"parents in '{drive_folder_id}' and (mimeType contains 'image/' or mimeType contains 'video/')",
+                pageSize=100,
+                fields="files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, iconLink)",
+                orderBy="createdTime desc"
+            ).execute()
+            
+            files = results.get('files', [])
+            
+            return jsonify({
+                'success': True,
+                'files': files,
+                'count': len(files)
+            })
+            
+        except Exception as e:
+            print(f"Drive galeri hatası: {e}")
+            return jsonify({'success': True, 'files': []})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
