@@ -10,6 +10,8 @@ from googleapiclient.http import MediaFileUpload
 import logging
 from datetime import datetime
 import math
+import base64
+import requests
 
 app = Flask(__name__)
 CORS(app, 
@@ -1325,6 +1327,17 @@ def admin_add_wedding_code():
         except Exception as e:
             print(f"⚠️ Drive klasörü oluşturulamadı: {e}")
         
+        # 🌐 GitHub sitesi oluştur (opsiyonel)
+        github_info = None
+        github_token = os.environ.get('GITHUB_TOKEN')
+        if github_token:
+            try:
+                github_info = create_github_wedding_site(name, code, github_token)
+                if github_info:
+                    print(f"✅ GitHub sitesi oluşturuldu: {github_info['pages_url']}")
+            except Exception as e:
+                print(f"⚠️ GitHub sitesi oluşturulamadı: {e}")
+        
         # Yeni kod ekle
         codes_data[code] = {
             'name': name,
@@ -1334,7 +1347,10 @@ def admin_add_wedding_code():
             'drive_folder_id': drive_folder_id,
             'website_url': f'/wedding/{code}',
             'upload_url': f'/wedding/{code}/upload',
-            'gallery_url': f'/wedding/{code}/gallery'
+            'gallery_url': f'/wedding/{code}/gallery',
+            'github_repo': github_info['repo_url'] if github_info else None,
+            'github_pages': github_info['pages_url'] if github_info else None,
+            'github_repo_name': github_info['repo_name'] if github_info else None
         }
         
         # Dosyayı güncelle
@@ -1355,7 +1371,9 @@ def admin_add_wedding_code():
             'drive_folder_id': drive_folder_id,
             'website_url': f'{request.url_root}wedding/{code}',
             'upload_url': f'{request.url_root}wedding/{code}/upload',
-            'gallery_url': f'{request.url_root}wedding/{code}/gallery'
+            'gallery_url': f'{request.url_root}wedding/{code}/gallery',
+            'github_repo': github_info['repo_url'] if github_info else None,
+            'github_pages': github_info['pages_url'] if github_info else None
         })
         
     except Exception as e:
@@ -1530,8 +1548,14 @@ def admin_codes_dashboard():
                                 '<p style="margin-top: 8px; font-size: 0.85rem; color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Drive klasörü oluşturulamadı</p>'
                             }
                             <p style="margin-top: 5px; font-size: 0.85rem;">
-                                <strong>🌐 Site:</strong> <a href="${window.location.origin}/wedding/${code}" target="_blank" style="color: #10b981;">/wedding/${code}</a>
+                                <strong>🌐 Heroku:</strong> <a href="${window.location.origin}/wedding/${code}" target="_blank" style="color: #10b981;">/wedding/${code}</a>
                             </p>
+                            ${info.github_pages ? 
+                                `<p style="margin-top: 3px; font-size: 0.85rem;">
+                                    <strong>🌍 GitHub:</strong> <a href="${info.github_pages}" target="_blank" style="color: #3b82f6;">${info.github_pages.split('/').pop()}</a>
+                                 </p>` : 
+                                '<p style="margin-top: 3px; font-size: 0.85rem; color: #6b7280;"><i class="fab fa-github"></i> GitHub sitesi yok</p>'
+                            }
                         </div>
                         <div class="code-actions">
                             <button class="btn" onclick="openWedding('${code}')">
@@ -2115,6 +2139,181 @@ def wedding_gallery_api(wedding_code):
             
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# GitHub API functions
+def create_github_wedding_site(wedding_name, wedding_code, github_token):
+    """GitHub'da düğün için otomatik repo ve site oluştur"""
+    try:
+        import requests
+        
+        # GitHub API headers
+        headers = {
+            'Authorization': f'token {github_token}',
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+        }
+        
+        # Repo adı (GitHub uyumlu)
+        repo_name = f"wedding-{wedding_code.lower().replace('_', '-')}"
+        
+        # 1. Repository oluştur
+        repo_data = {
+            'name': repo_name,
+            'description': f'💍 {wedding_name} - Düğün Fotoğraf Galerisi',
+            'homepage': f'https://YOUR_USERNAME.github.io/{repo_name}',
+            'private': False,
+            'has_issues': False,
+            'has_projects': False,
+            'has_wiki': False,
+            'auto_init': True
+        }
+        
+        repo_response = requests.post(
+            'https://api.github.com/user/repos',
+            headers=headers,
+            json=repo_data,
+            timeout=30
+        )
+        
+        if repo_response.status_code != 201:
+            print(f"Repo oluşturma hatası: {repo_response.text}")
+            return None
+        
+        repo_info = repo_response.json()
+        print(f"✅ GitHub repo oluşturuldu: {repo_info['html_url']}")
+        
+        # 2. GitHub Pages aktif et
+        pages_data = {
+            'source': {
+                'branch': 'main',
+                'path': '/'
+            }
+        }
+        
+        pages_response = requests.post(
+            f"https://api.github.com/repos/{repo_info['full_name']}/pages",
+            headers=headers,
+            json=pages_data,
+            timeout=30
+        )
+        
+        if pages_response.status_code not in [201, 409]:  # 409 = already exists
+            print(f"Pages aktifleştirme hatası: {pages_response.text}")
+        
+        # 3. HTML dosyalarını oluştur
+        html_content = create_wedding_html_template(wedding_name, wedding_code)
+        
+        # index.html dosyası oluştur
+        file_data = {
+            'message': f'Initial commit: {wedding_name} wedding site',
+            'content': base64.b64encode(html_content.encode('utf-8')).decode('utf-8')
+        }
+        
+        file_response = requests.put(
+            f"https://api.github.com/repos/{repo_info['full_name']}/contents/index.html",
+            headers=headers,
+            json=file_data,
+            timeout=30
+        )
+        
+        if file_response.status_code == 201:
+            print(f"✅ HTML dosyası oluşturuldu")
+        
+        return {
+            'repo_url': repo_info['html_url'],
+            'pages_url': f"https://{repo_info['owner']['login']}.github.io/{repo_name}",
+            'repo_name': repo_name
+        }
+        
+    except Exception as e:
+        print(f"GitHub site oluşturma hatası: {e}")
+        return None
+
+def create_wedding_html_template(wedding_name, wedding_code):
+    """Düğün sitesi için HTML template oluştur"""
+    return f'''<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💍 {wedding_name} - Düğün Anıları</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ 
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; color: white; overflow-x: hidden;
+        }}
+        .container {{ max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }}
+        .hero {{ 
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); 
+            border-radius: 24px; padding: 50px 30px; margin-bottom: 30px; 
+            border: 1px solid rgba(255,255,255,0.2);
+        }}
+        .hero h1 {{ font-size: 3rem; margin-bottom: 15px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }}
+        .hero p {{ font-size: 1.3rem; opacity: 0.9; margin-bottom: 30px; }}
+        .buttons {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }}
+        .btn {{
+            background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3); border-radius: 16px;
+            padding: 25px 20px; color: white; text-decoration: none;
+            transition: all 0.3s ease;
+        }}
+        .btn:hover {{ transform: translateY(-5px); background: rgba(255,255,255,0.25); }}
+        .btn i {{ font-size: 2rem; margin-bottom: 15px; display: block; }}
+        .btn h3 {{ font-size: 1.2rem; margin-bottom: 8px; }}
+        .btn p {{ font-size: 0.9rem; opacity: 0.8; }}
+        .qr-section {{
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+            border-radius: 20px; padding: 30px; margin-top: 30px;
+        }}
+        .qr-code {{ 
+            background: white; border-radius: 16px; padding: 20px; 
+            display: inline-block; margin: 20px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-heart" style="color: #ff6b6b;"></i> {wedding_name}</h1>
+            <p>Düğün anılarımızı buradan paylaşabilirsiniz</p>
+            <p style="font-size: 1rem; opacity: 0.7;">Düğün Kodu: <strong>{wedding_code}</strong></p>
+        </div>
+        
+        <div class="buttons">
+            <a href="https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com/api/upload" class="btn">
+                <i class="fas fa-cloud-upload-alt" style="color: #10b981;"></i>
+                <h3>Fotoğraf Yükle</h3>
+                <p>Çektiğiniz fotoğraf ve videoları buradan yükleyin</p>
+            </a>
+            
+            <a href="https://dugun-wep-app-heroku-03a36843f3d6.herokuapp.com/gallery-view" class="btn">
+                <i class="fas fa-images" style="color: #3b82f6;"></i>
+                <h3>Galeriyi Gör</h3>
+                <p>Tüm düğün fotoğraflarını görüntüleyin</p>
+            </a>
+        </div>
+        
+        <div class="qr-section">
+            <h3><i class="fas fa-qrcode"></i> Bu Sayfayı Paylaş</h3>
+            <p>QR kodu okutarak diğer konuklar da erişebilir</p>
+            
+            <div class="qr-code">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&format=png&data=${{window.location.href}}" alt="QR Kod">
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Sayfa yüklendiğinde
+        document.addEventListener('DOMContentLoaded', function() {{
+            console.log('✅ {wedding_name} düğün sitesi yüklendi');
+        }});
+    </script>
+</body>
+</html>'''
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
