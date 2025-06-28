@@ -1141,16 +1141,29 @@ body::before {
         color: #333;
         border-radius: 12px;
         min-height: 50px;
+        -webkit-text-fill-color: #333;
+        /* iOS Safari için */
+        -webkit-appearance: none;
+        /* iOS stillerini sıfırla */
     }
 
     .form-input::placeholder {
-        color: #999;
+        color: #6b7280 !important;
     }
 
     .form-input:focus {
         background: white;
         border-color: #8b5cf6;
         box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    /* Mobile autofill düzeltmesi */
+    .form-input:-webkit-autofill,
+    .form-input:-webkit-autofill:hover,
+    .form-input:-webkit-autofill:focus {
+        -webkit-box-shadow: 0 0 0 1000px white inset;
+        -webkit-text-fill-color: #333 !important;
+        background-color: white !important;
     }
 
     .form-hint {
@@ -1455,26 +1468,39 @@ body::before {
 .form-input {
     width: 100%;
     padding: 15px 20px;
-    background: rgba(255, 255, 255, 0.12);
+    background: white;
     backdrop-filter: blur(8px);
-    border: 2px solid rgba(255, 255, 255, 0.25);
+    border: 2px solid rgba(255, 255, 255, 0.8);
     border-radius: 12px;
-    color: white;
+    color: #333;
     font-size: 1rem;
     font-family: 'Poppins', sans-serif;
     transition: all 0.3s ease;
     outline: none;
+    -webkit-text-fill-color: #333;
+    /* iOS Safari için */
+    -webkit-appearance: none;
+    /* iOS stillerini sıfırla */
 }
 
 .form-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
+    color: #6b7280 !important;
 }
 
 .form-input:focus {
-    background: rgba(255, 255, 255, 0.18);
+    background: white;
     border-color: #8b5cf6;
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
     transform: translateY(-1px);
+}
+
+/* Mobile cihazlarda autofill sorununu düzelt */
+.form-input:-webkit-autofill,
+.form-input:-webkit-autofill:hover,
+.form-input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px white inset;
+    -webkit-text-fill-color: #333 !important;
+    background-color: white !important;
 }
 
 .form-hint {
